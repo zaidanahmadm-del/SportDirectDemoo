@@ -1,0 +1,179 @@
+Build a mobile-first Sports Direct microsite with a bold, sporty aesthetic that matches the brand (red/blue/black/white). Use Vite + React + TypeScript and Three.js for a lightweight 3D game. The site has three routes:
+
+/ (Landing & Registration)
+
+/game (3D penalty mini-game)
+
+/win (Congrats + store opening + voucher)
+
+Brand & UI
+
+Color palette: Red #FF0000, Blue #0033CC, Black #111111, White #FFFFFF, Gray #F4F4F4.
+
+Typography: strong sans-serif (e.g., Inter or similar), bold headings, large buttons.
+
+Buttons: bold red bg, white text, rounded-md, full-width on mobile.
+
+Header: Sports Direct logo (use provided logo file /public/sports-direct-logo.png; if not found, create a red/blue text placeholder).
+
+Keep layout minimal and punchy like sportsdirect.com: wide headlines, strong contrast, clean blocks.
+
+Add basic Tailwind CSS for styling.
+
+Tech & Structure
+
+Stack: Vite + React + TypeScript + Tailwind + React Router + Three.js.
+
+Files:
+
+src/main.tsx, src/App.tsx (routing), src/styles.css (Tailwind).
+
+Pages: src/pages/Landing.tsx, src/pages/Game.tsx, src/pages/Win.tsx.
+
+Components: src/components/Header.tsx, src/components/BrandButton.tsx.
+
+Utils: src/utils/voucher.ts, src/utils/storage.ts.
+
+PWA-ready (manifest + icons placeholders).
+
+SEO: title/description, Open Graph tags.
+
+Page 1 — Landing (“/”)
+
+Top: header with Sports Direct logo centered.
+
+Hero copy:
+
+H1: “Kick Off with Sports Direct”
+
+Sub: “Register, score the winning goal, and unlock your opening-day voucher.”
+
+Form fields (stacked, large): Full Name, Email, Phone.
+
+Validation: required fields, email pattern, phone digits.
+
+Start Game button (red, full-width).
+
+On submit:
+
+Save {name,email,phone} to localStorage under sd_user.
+
+Navigate to /game.
+
+Footer note: “By continuing you agree to the event T&Cs.” (link placeholder).
+
+Page 2 — 3D Game (“/game”)
+
+Implement a simple, fun 3D penalty shootout using Three.js (no heavy physics libs). It should run smoothly on mobile.
+
+Scene
+
+PerspectiveCamera, ambient + directional light.
+
+Ground plane (green), stadium-like gradient background (skybox or a big color plane).
+
+Goal made from simple white boxes (crossbar + posts). Add a thin invisible “goal line” plane for scoring detection.
+
+A ball (white sphere with subtle hex pattern or simple white).
+
+The goal moves horizontally left-to-right in front of the camera on a loop (tween with sine easing between two x bounds).
+
+Controls & Play
+
+UI instructions: “Tap to shoot! Keep trying until you score.”
+
+One-tap/click anywhere:
+
+If ball is “ready”, animate a fast forward kick: move the ball along Z axis toward the goal with slight arc (y up a bit).
+
+Add small random spread on each shot so it’s not trivial.
+
+When ball reaches/overlaps the goal line plane within the posts, count as a GOAL. Otherwise, reset ball to starting position after a brief delay so user can try again.
+
+Unlimited tries until user scores.
+
+Minimal sound: soft “kick” and “cheer” (optional, include toggle).
+
+Win Flow
+
+On first GOAL:
+
+Show a full-screen overlay: “GOAL! You’ve unlocked your voucher.” with a confetti canvas (simple particles).
+
+Generate a unique voucher code (see utils below).
+
+Save {won: true, code, time} in localStorage under sd_voucher.
+
+CTA button: “View Your Voucher” → navigate to /win.
+
+Performance
+
+Lock to 60fps when possible, throttle animations on hidden tab, dispose on unmount.
+
+Works great on mobile portrait first; add a small prompt to rotate if landscape.
+
+Page 3 — Win (“/win”)
+
+If sd_voucher.won is not true, redirect to /game.
+
+Header logo, confetti accent.
+
+H1: “Congratulations, {firstName}!” (parse from sd_user.name).
+
+Card:
+
+“You’ve won a Sports Direct voucher.”
+
+Voucher Code in large monospace box (copy-to-clipboard button).
+
+Fine text: “Show this code at our new store opening to redeem.”
+
+Store Opening Details block (editable placeholders):
+
+“Sports Direct — New Store Opening”
+
+Date: Friday, 27 Sept, 10:00 AM
+
+Location: [Mall/Street], City
+
+Launch offers & terms (placeholder list).
+
+Buttons:
+
+“Add to Calendar” (generate ICS file on click).
+
+“Get Directions” (link to Google Maps placeholder).
+
+“Back to Home”.
+
+Voucher & Storage Utils
+
+generateVoucherCode():
+
+Format: SD- + 8-char uppercase base36 (e.g., SD-7K3Q9WPT).
+
+Ensure deterministic per user per day: hash of email + yyyymmdd so refresh doesn’t spam new codes; but if no email, random.
+
+storage.ts helpers for get/set JSON in localStorage with key prefixes.
+
+Extra Requirements
+
+Accessibility: labels tied to inputs, focus states, ARIA where relevant.
+
+Responsive: mobile-first; tablet/desktop get centered narrow layout.
+
+Theming: create Tailwind config for brand colors; headings in blue, CTAs in red, dark text on white cards.
+
+Assets: place /public/sports-direct-logo.png; if missing, render a placeholder logo: stacked “SPORTS” (white text on blue block) over “DIRECT” (white on red block).
+
+No backend: keep all data client-side; include a Download CSV developer link (hidden under a query param ?admin=1) that exports captured sign-ups as CSV from localStorage for demo purposes.
+
+Add a tiny Privacy modal (what’s stored locally, no server).
+
+Clean code, comments on game logic, and clear README with how to run/build.
+
+Finally, generate the project and ensure:
+
+npm run dev serves the three routes correctly.
+
+The 3D game is smooth on mobile and visually matches a Sports Direct vibe.
