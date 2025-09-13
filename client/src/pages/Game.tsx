@@ -267,7 +267,7 @@ export default function Game() {
   };
 
   return (
-    <main className="main-content premium-container py-12 fade-in">
+    <main className="main-content premium-container pt-12 pb-12 fade-in">
       {/* Header Section */}
       <section className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-heading font-black text-sd-blue mb-2">

@@ -125,7 +125,7 @@ END:VCALENDAR`;
   };
 
   return (
-    <main className="main-content premium-container py-12 fade-in">
+    <main className="main-content premium-container pt-12 pb-12 fade-in">
       {/* Congratulations Header */}
       <section className="text-center mb-10 bounce-in">
         <h1 className="text-4xl md:text-5xl font-heading font-black text-sd-blue mb-4" data-testid="text-congratulations">
