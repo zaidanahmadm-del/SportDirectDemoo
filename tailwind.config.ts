@@ -61,14 +61,16 @@ export default {
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
         },
-        // Sports Direct brand colors
+        // Sports Direct Premium brand colors
         'sd-red': '#FF0000',
-        'sd-blue': '#0033CC',
+        'sd-blue': '#0033CC', 
         'sd-black': '#111111',
-        'sd-gray': '#F4F4F4',
+        'sd-gray': '#F5F5F5',
+        'sd-light-border': '#DDDDDD',
       },
       fontFamily: {
-        sans: ["Inter", "var(--font-sans)"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        heading: ["Roboto Condensed", "Inter", "system-ui", "sans-serif"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
       },

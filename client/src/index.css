@@ -1,37 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&family=Roboto+Condensed:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   --background: hsl(0, 0%, 100%);
-  --foreground: hsl(222, 84%, 4.9%);
+  --foreground: hsl(0, 0%, 6.7%);
   --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(222, 84%, 4.9%);
+  --card-foreground: hsl(0, 0%, 6.7%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(222, 84%, 4.9%);
+  --popover-foreground: hsl(0, 0%, 6.7%);
   --primary: hsl(0, 100%, 50%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(220, 100%, 40%);
   --secondary-foreground: hsl(0, 0%, 100%);
-  --muted: hsl(210, 40%, 96%);
+  --muted: hsl(0, 0%, 96.1%);
   --muted-foreground: hsl(215, 16%, 47%);
-  --accent: hsl(210, 40%, 96%);
-  --accent-foreground: hsl(222, 84%, 4.9%);
+  --accent: hsl(0, 0%, 96.1%);
+  --accent-foreground: hsl(0, 0%, 6.7%);
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(210, 40%, 98%);
   --border: hsl(214, 32%, 91%);
-  --input: hsl(214, 32%, 91%);
-  --ring: hsl(222, 84%, 4.9%);
-  --radius: 0.5rem;
+  --input: hsl(220, 13%, 91%);
+  --ring: hsl(0, 100%, 50%);
+  --radius: 8px;
   
-  /* Sports Direct Brand Colors */
+  /* Sports Direct Premium Brand Colors */
   --sd-red: hsl(0, 100%, 50%);
   --sd-blue: hsl(220, 100%, 40%);
   --sd-black: hsl(0, 0%, 6.7%);
-  --sd-gray: hsl(0, 0%, 95.7%);
+  --sd-gray: hsl(0, 0%, 96.1%);
+  --sd-light-border: hsl(0, 0%, 87%);
   
   --font-sans: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Roboto Condensed', 'Inter', system-ui, sans-serif;
 }
 
 @layer base {
@@ -40,12 +42,21 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
+    background: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 96.1%) 100%);
+    min-height: 100vh;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    font-weight: 700;
+    font-family: 'Roboto Condensed', 'Inter', system-ui, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.025em;
+  }
+  
+  /* Fixed header space */
+  .main-content {
+    padding-top: 80px;
   }
 }
 
@@ -54,17 +65,51 @@
     background: linear-gradient(135deg, #87CEEB 0%, #98FB98 100%);
   }
   
+  .premium-card {
+    @apply bg-white rounded-lg shadow-sm border border-sd-light-border;
+  }
+  
+  .premium-button {
+    @apply bg-sd-red text-white font-bold uppercase tracking-wide rounded-lg transition-all duration-200 hover:bg-red-600 focus:ring-2 focus:ring-sd-red focus:ring-offset-2;
+  }
+  
+  .premium-button-secondary {
+    @apply bg-sd-blue text-white font-bold uppercase tracking-wide rounded-lg transition-all duration-200 hover:bg-blue-700 focus:ring-2 focus:ring-sd-blue focus:ring-offset-2;
+  }
+  
+  .premium-input {
+    @apply w-full h-12 px-4 rounded-lg border-2 border-sd-light-border bg-white text-sd-black font-medium transition-all duration-200 focus:border-sd-red focus:ring-2 focus:ring-sd-red/20;
+  }
+  
+  .premium-container {
+    @apply max-w-sm mx-auto px-6;
+  }
+  
   .confetti {
     position: absolute;
     width: 10px;
     height: 10px;
     background: var(--sd-red);
     animation: confetti-fall 3s linear infinite;
+    border-radius: 2px;
   }
   
   .confetti:nth-child(odd) {
     background: var(--sd-blue);
     animation-delay: -0.5s;
+  }
+  
+  .confetti:nth-child(3n) {
+    background: hsl(45, 100%, 55%);
+    animation-delay: -1s;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .bounce-in {
+    animation: bounceIn 0.5s ease-out;
   }
 }
 
@@ -76,5 +121,31 @@
   100% {
     transform: translateY(100vh) rotate(720deg);
     opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }

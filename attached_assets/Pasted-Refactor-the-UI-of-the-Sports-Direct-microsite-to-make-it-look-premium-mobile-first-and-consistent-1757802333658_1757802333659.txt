@@ -1,0 +1,85 @@
+Refactor the UI of the Sports Direct microsite to make it look premium, mobile-first, and consistent with the official Sports Direct branding, without changing any of the existing functionality or game logic.
+
+Global Theme & Logo
+
+Use the official Sports Direct logo (/public/sports-direct-logo.png) at the top of every page.
+
+Add a fixed header with white background, subtle shadow, and centered logo (not stretched).
+
+Typography: bold sans-serif (Roboto Condensed or Inter ExtraBold) for headings, Inter Regular for body text.
+
+Colors:
+
+Primary Red: #FF0000
+
+Primary Blue: #0033CC
+
+Neutral Black: #111111
+
+Light Gray: #F5F5F5
+
+Buttons: large, bold, all-caps, red background with white text, hover state slightly darker red, rounded corners.
+
+Add consistent spacing and padding across all layouts.
+
+Limit content width to max 420px on mobile and center content on larger screens.
+
+Landing Page (/)
+
+Hero section: big bold headline in blue, tagline below in dark gray.
+
+Place form inside a white card with rounded corners and shadow.
+
+Inputs: full width, 48px tall, bold labels above, light border (#DDD), rounded corners.
+
+“Start Game” button: full-width, 56px tall, red background, white bold text.
+
+Footer: thin gray divider, then small text “By continuing you agree to the T&Cs”.
+
+Game Page (/game)
+
+Title: bold blue headline centered, with a small red underline accent.
+
+Instructions: smaller gray text below the title.
+
+Place the game canvas inside a white card with rounded corners and shadow, padded so the canvas doesn’t touch edges.
+
+Attempts & Goals: display as stat cards with white background, light gray border, rounded corners.
+
+Attempts number in blue, Goals number in red.
+
+Buttons (Reset, Sound): consistent styling: rounded corners, bold text, hover effect.
+
+Goal modal overlay: full-screen dark backdrop, centered white card, large red “GOAL!” heading, and bold red voucher CTA button.
+
+Win Page (/win)
+
+Heading: “Congratulations, {name}!” in bold blue with 🎉 emoji.
+
+Voucher code card: gradient background (red → purple), large white monospace voucher code, with a copy button styled in red/white.
+
+Store opening details in a white card with shadow:
+
+Title: bold blue.
+
+Details: use icons (calendar, location, gift) aligned left, text aligned right.
+
+Buttons: full-width bold buttons in red or blue (Add to Calendar, Get Directions, Back to Home).
+
+Add subtle animated confetti in the background for a celebratory feel.
+
+Mobile Polish
+
+Mobile-first design, all content centered.
+
+Smooth transitions and hover/touch effects on buttons and modals.
+
+Consistent rounded corners (8px) on all cards, inputs, and buttons.
+
+Subtle page background gradient (white → light gray).
+
+Game canvas responsive with preserved aspect ratio.
+
+Modal dialogs should fade in/out smoothly.
+
+Ensure tap targets are large and touch-friendly.
