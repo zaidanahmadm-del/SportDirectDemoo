@@ -13,6 +13,7 @@ export default function Game() {
   const [gameState, setGameState] = useState<'ready' | 'shooting' | 'goal' | 'miss'>('ready');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showGoalOverlay, setShowGoalOverlay] = useState(false);
+  const [webglError, setWebglError] = useState<string | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<{
@@ -39,93 +40,103 @@ export default function Game() {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const canvas = canvasRef.current;
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    
-    renderer.setSize(canvas.width, canvas.height);
-    renderer.setClearColor(0x87CEEB); // Sky blue background
-    
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 10, 5);
-    scene.add(directionalLight);
-    
-    // Ground
-    const groundGeometry = new THREE.PlaneGeometry(20, 20);
-    const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x00aa00 });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    scene.add(ground);
-    
-    // Goal posts
-    const goalGroup = new THREE.Group();
-    const postMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    
-    // Left post
-    const postGeometry = new THREE.BoxGeometry(0.1, 2.4, 0.1);
-    const leftPost = new THREE.Mesh(postGeometry, postMaterial);
-    leftPost.position.set(-3.6, 1.2, -8);
-    goalGroup.add(leftPost);
-    
-    // Right post
-    const rightPost = new THREE.Mesh(postGeometry, postMaterial);
-    rightPost.position.set(3.6, 1.2, -8);
-    goalGroup.add(rightPost);
-    
-    // Crossbar
-    const crossbarGeometry = new THREE.BoxGeometry(7.3, 0.1, 0.1);
-    const crossbar = new THREE.Mesh(crossbarGeometry, postMaterial);
-    crossbar.position.set(0, 2.4, -8);
-    goalGroup.add(crossbar);
-    
-    scene.add(goalGroup);
-    
-    // Ball
-    const ballGeometry = new THREE.SphereGeometry(0.15, 16, 16);
-    const ballMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
-    ball.position.set(0, 0.15, 5);
-    scene.add(ball);
-    
-    // Goal line (invisible plane for collision detection)
-    const goalLine = new THREE.Plane(new THREE.Vector3(0, 0, 1), 8);
-    
-    // Camera position
-    camera.position.set(0, 2, 8);
-    camera.lookAt(0, 1, -5);
-    
-    // Store scene objects
-    sceneRef.current = {
-      scene,
-      camera,
-      renderer,
-      ball,
-      goal: goalGroup,
-      goalLine,
-    };
-    
-    // Start goal movement animation
-    startGoalAnimation();
-    
-    // Render loop
-    const animate = () => {
-      if (sceneRef.current) {
-        sceneRef.current.renderer.render(scene, camera);
-        sceneRef.current.animationId = requestAnimationFrame(animate);
-      }
-    };
-    animate();
+    try {
+      const canvas = canvasRef.current;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      
+      renderer.setSize(canvas.width, canvas.height);
+      renderer.setClearColor(0x87CEEB); // Sky blue background
+      
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+      scene.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(0, 10, 5);
+      scene.add(directionalLight);
+      
+      // Ground
+      const groundGeometry = new THREE.PlaneGeometry(20, 20);
+      const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x00aa00 });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      scene.add(ground);
+      
+      // Goal posts
+      const goalGroup = new THREE.Group();
+      const postMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      
+      // Left post
+      const postGeometry = new THREE.BoxGeometry(0.1, 2.4, 0.1);
+      const leftPost = new THREE.Mesh(postGeometry, postMaterial);
+      leftPost.position.set(-3.6, 1.2, -8);
+      goalGroup.add(leftPost);
+      
+      // Right post
+      const rightPost = new THREE.Mesh(postGeometry, postMaterial);
+      rightPost.position.set(3.6, 1.2, -8);
+      goalGroup.add(rightPost);
+      
+      // Crossbar
+      const crossbarGeometry = new THREE.BoxGeometry(7.3, 0.1, 0.1);
+      const crossbar = new THREE.Mesh(crossbarGeometry, postMaterial);
+      crossbar.position.set(0, 2.4, -8);
+      goalGroup.add(crossbar);
+      
+      scene.add(goalGroup);
+      
+      // Ball
+      const ballGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+      const ballMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+      ball.position.set(0, 0.15, 5);
+      scene.add(ball);
+      
+      // Goal line (invisible plane for collision detection)
+      const goalLine = new THREE.Plane(new THREE.Vector3(0, 0, 1), 8);
+      
+      // Camera position
+      camera.position.set(0, 2, 8);
+      camera.lookAt(0, 1, -5);
+      
+      // Store scene objects
+      sceneRef.current = {
+        scene,
+        camera,
+        renderer,
+        ball,
+        goal: goalGroup,
+        goalLine,
+      };
+      
+      // Start goal movement animation
+      startGoalAnimation();
+      
+      // Render loop
+      const animate = () => {
+        if (sceneRef.current) {
+          sceneRef.current.renderer.render(scene, camera);
+          sceneRef.current.animationId = requestAnimationFrame(animate);
+        }
+      };
+      animate();
+      
+    } catch (error) {
+      // Handle WebGL initialization errors
+      console.error('WebGL initialization failed:', error);
+      setWebglError('Your device does not support WebGL, which is required for the 3D game. Please try using a different browser or device.');
+      return;
+    }
     
     return () => {
       if (sceneRef.current?.animationId) {
         cancelAnimationFrame(sceneRef.current.animationId);
       }
-      renderer.dispose();
+      if (sceneRef.current?.renderer) {
+        sceneRef.current.renderer.dispose();
+      }
     };
   }, []);
 
@@ -284,14 +295,39 @@ export default function Game() {
       {/* 3D Game Canvas */}
       <section className="mb-6">
         <div className="game-container p-4 rounded-lg relative">
-          <canvas 
-            ref={canvasRef}
-            width={320} 
-            height={240}
-            data-testid="canvas-game"
-            className="w-full h-auto block mx-auto bg-green-100 rounded-lg cursor-pointer"
-            onClick={handleCanvasClick}
-          />
+          {webglError ? (
+            // WebGL Error Fallback
+            <div className="bg-card p-6 rounded-lg border border-border text-center" data-testid="webgl-error-fallback">
+              <div className="text-6xl mb-4">⚽</div>
+              <h3 className="text-xl font-bold text-sd-blue mb-3">3D Game Unavailable</h3>
+              <p className="text-muted-foreground mb-4">{webglError}</p>
+              <div className="bg-sd-gray p-4 rounded-md mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Don't worry! You can still win your voucher by registering.
+                </p>
+              </div>
+              <Button 
+                onClick={() => {
+                  // Simulate goal for fallback users
+                  setGoals(1);
+                  handleGoalScored();
+                }}
+                data-testid="button-claim-voucher"
+                className="w-full bg-sd-red hover:bg-sd-red/90 text-white font-bold"
+              >
+                Claim Your Voucher
+              </Button>
+            </div>
+          ) : (
+            <canvas 
+              ref={canvasRef}
+              width={320} 
+              height={240}
+              data-testid="canvas-game"
+              className="w-full h-auto block mx-auto bg-green-100 rounded-lg cursor-pointer"
+              onClick={handleCanvasClick}
+            />
+          )}
           
           {/* Game Controls Overlay */}
           {gameState === 'ready' && (
