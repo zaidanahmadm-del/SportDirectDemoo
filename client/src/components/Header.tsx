@@ -19,7 +19,7 @@ export default function Header() {
         <img 
           src="/sports-direct-logo.jpg" 
           alt="Sports Direct" 
-          className="h-16 md:h-20 w-auto object-contain"
+          className="h-28 md:h-32 w-auto object-contain"
           data-testid="logo-sports-direct"
         />
       </div>

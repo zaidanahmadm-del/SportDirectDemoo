@@ -15,7 +15,7 @@ const normalizePhone = (v:string) => v.replace(/\s+/g, "");
 const registrationSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  phone: z.string().regex(/^(\+44|0)[0-9]{10,11}$/, "Please enter a valid UK phone number"),
+  phone: z.string().regex(/^(?:\+?971|0)5[0-9]{8}$/, "Please enter a valid UAE mobile number"),
 });
 
 type RegistrationForm = z.infer<typeof registrationSchema>;
