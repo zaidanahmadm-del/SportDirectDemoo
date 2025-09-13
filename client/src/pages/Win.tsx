@@ -125,75 +125,80 @@ END:VCALENDAR`;
   };
 
   return (
-    <main className="max-w-md mx-auto px-4 py-6">
+    <main className="main-content premium-container py-12 fade-in">
       {/* Congratulations Header */}
-      <section className="text-center mb-8">
-        <div className="relative mb-4">
-          <h1 className="text-3xl font-bold text-sd-blue" data-testid="text-congratulations">
-            Congratulations, {firstName}!
-          </h1>
-          <div className="absolute -top-2 -right-2 text-2xl">🎉</div>
-        </div>
-        <p className="text-lg text-muted-foreground">
-          You've won a Sports Direct voucher.
+      <section className="text-center mb-10 bounce-in">
+        <h1 className="text-4xl md:text-5xl font-heading font-black text-sd-blue mb-4" data-testid="text-congratulations">
+          CONGRATULATIONS,<br />{firstName.toUpperCase()}! 🎉
+        </h1>
+        <p className="text-xl font-bold text-sd-black/80">
+          You've won an exclusive Sports Direct voucher.
         </p>
       </section>
 
       {/* Voucher Card */}
-      <section className="bg-gradient-to-br from-sd-red to-sd-blue p-6 rounded-lg shadow-lg mb-6 text-white">
-        <div className="text-center mb-4">
-          <h2 className="text-xl font-bold mb-2">Your Voucher Code</h2>
-          <div className="bg-white/20 p-4 rounded-md">
-            <code className="text-2xl font-mono font-bold tracking-wider" data-testid="text-voucher-code">
+      <section className="bg-gradient-to-br from-sd-red via-purple-500 to-purple-700 p-8 rounded-lg shadow-xl mb-10 text-white bounce-in">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-heading font-black mb-4 uppercase tracking-wide">Your Voucher Code</h2>
+          <div className="bg-white/20 p-6 rounded-lg shadow-inner">
+            <code className="text-3xl font-mono font-black tracking-widest text-white" data-testid="text-voucher-code">
               {voucherData.code}
             </code>
           </div>
           <Button 
             onClick={copyVoucherCode}
             data-testid="button-copy-code"
-            variant="ghost"
-            className="mt-2 text-sm bg-white/20 hover:bg-white/30 text-white"
+            className="mt-4 premium-button bg-white text-sd-red hover:bg-gray-100 font-black"
           >
-            📋 Copy Code
+            📋 COPY CODE
           </Button>
         </div>
-        <p className="text-sm text-white/90 text-center">
+        <p className="text-lg text-white/95 text-center font-medium">
           Show this code at our new store opening to redeem.
         </p>
       </section>
 
       {/* Store Opening Details */}
-      <section className="bg-card p-6 rounded-lg border border-border mb-6">
-        <h3 className="text-xl font-bold text-sd-blue mb-4 text-center">
+      <section className="premium-card p-8 mb-10 bounce-in">
+        <h3 className="text-2xl font-heading font-black text-sd-blue mb-6 text-center uppercase">
           {storeDetails.name}
         </h3>
         
-        <div className="space-y-3 mb-6">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">📅</span>
-            <div>
-              <p className="font-medium" data-testid="text-event-date">
+        <div className="space-y-6 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-3xl">📅</span>
+              <span className="text-sm font-bold text-sd-black/60 uppercase tracking-wide">When</span>
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-lg text-sd-black" data-testid="text-event-date">
                 {storeDetails.date}, {storeDetails.time}
               </p>
-              <p className="text-sm text-muted-foreground">Store Opening Day</p>
+              <p className="text-sm text-sd-black/60 font-medium">Store Opening Day</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">📍</span>
-            <div>
-              <p className="font-medium" data-testid="text-event-location">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-3xl">📍</span>
+              <span className="text-sm font-bold text-sd-black/60 uppercase tracking-wide">Where</span>
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-lg text-sd-black" data-testid="text-event-location">
                 {storeDetails.location}
               </p>
-              <p className="text-sm text-muted-foreground">{storeDetails.address}</p>
+              <p className="text-sm text-sd-black/60 font-medium">{storeDetails.address}</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">🎁</span>
-            <div>
-              <p className="font-medium">Launch Offers Available</p>
-              <p className="text-sm text-muted-foreground" data-testid="text-offers">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-3xl">🎁</span>
+              <span className="text-sm font-bold text-sd-black/60 uppercase tracking-wide">Offers</span>
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-lg text-sd-black">Launch Offers Available</p>
+              <p className="text-sm text-sd-black/60 font-medium" data-testid="text-offers">
                 {storeDetails.offers}
               </p>
             </div>
@@ -201,43 +206,42 @@ END:VCALENDAR`;
         </div>
         
         {/* Action Buttons */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Button 
             onClick={generateCalendarEvent}
             data-testid="button-add-calendar"
-            className="w-full bg-sd-blue hover:bg-sd-blue/90 text-white"
+            className="premium-button-secondary w-full h-14 text-lg"
           >
-            📅 Add to Calendar
+            📅 ADD TO CALENDAR
           </Button>
           
           <Button 
             onClick={getDirections}
             data-testid="button-get-directions"
-            variant="outline"
-            className="w-full"
+            className="premium-button-secondary w-full h-14 text-lg"
           >
-            🗺️ Get Directions
+            🗺️ GET DIRECTIONS
           </Button>
         </div>
       </section>
 
       {/* Navigation */}
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-4 pt-6 border-t border-sd-light-border">
         <Button 
           onClick={() => setLocation("/")}
           data-testid="button-back-home"
-          className="w-full bg-sd-red hover:bg-sd-red/90 text-white font-bold"
+          className="premium-button w-full h-14 text-lg"
         >
-          Back to Home
+          BACK TO HOME
         </Button>
         
         <Button 
           onClick={() => setLocation("/game")}
           data-testid="link-play-again"
           variant="link"
-          className="text-primary hover:text-primary/80 font-medium underline"
+          className="text-sd-red hover:text-sd-red/80 font-bold uppercase tracking-wide underline transition-colors"
         >
-          Play Again
+          PLAY AGAIN
         </Button>
       </div>
 
