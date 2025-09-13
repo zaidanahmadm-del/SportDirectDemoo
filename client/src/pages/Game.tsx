@@ -267,42 +267,45 @@ export default function Game() {
   };
 
   return (
-    <main className="max-w-md mx-auto px-4 py-6">
-      {/* Game Instructions */}
-      <section className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-sd-blue mb-3">Penalty Shootout!</h1>
-        <p className="text-muted-foreground mb-4">
+    <main className="main-content premium-container py-12 fade-in">
+      {/* Header Section */}
+      <section className="text-center mb-8">
+        <h1 className="text-3xl md:text-4xl font-heading font-black text-sd-blue mb-2">
+          PENALTY SHOOTOUT
+          <div className="h-1 w-24 bg-sd-red mx-auto mt-2 rounded-full"></div>
+        </h1>
+        <p className="text-lg text-sd-black/70 mb-8 font-medium">
           Tap anywhere to shoot! Keep trying until you score.
         </p>
         
         {/* Game Stats */}
-        <div className="flex justify-center space-x-6 mb-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-foreground" data-testid="text-attempts">
+        <div className="flex justify-center space-x-6 mb-6">
+          <div className="premium-card px-6 py-4 text-center">
+            <div className="text-3xl font-heading font-black text-sd-blue" data-testid="text-attempts">
               {attempts}
             </div>
-            <div className="text-sm text-muted-foreground">Attempts</div>
+            <div className="text-sm text-sd-black/60 font-bold uppercase tracking-wide">Attempts</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-sd-red" data-testid="text-goals">
+          <div className="premium-card px-6 py-4 text-center">
+            <div className="text-3xl font-heading font-black text-sd-red" data-testid="text-goals">
               {goals}
             </div>
-            <div className="text-sm text-muted-foreground">Goals</div>
+            <div className="text-sm text-sd-black/60 font-bold uppercase tracking-wide">Goals</div>
           </div>
         </div>
       </section>
 
       {/* 3D Game Canvas */}
-      <section className="mb-6">
-        <div className="game-container p-4 rounded-lg relative">
+      <section className="mb-8">
+        <div className="premium-card p-6 relative bounce-in">
           {webglError ? (
             // WebGL Error Fallback
-            <div className="bg-card p-6 rounded-lg border border-border text-center" data-testid="webgl-error-fallback">
-              <div className="text-6xl mb-4">⚽</div>
-              <h3 className="text-xl font-bold text-sd-blue mb-3">3D Game Unavailable</h3>
-              <p className="text-muted-foreground mb-4">{webglError}</p>
-              <div className="bg-sd-gray p-4 rounded-md mb-4">
-                <p className="text-sm text-muted-foreground">
+            <div className="bg-white p-8 rounded-lg border-2 border-sd-light-border text-center" data-testid="webgl-error-fallback">
+              <div className="text-6xl mb-6">⚽</div>
+              <h3 className="text-2xl font-heading font-black text-sd-blue mb-4">3D GAME UNAVAILABLE</h3>
+              <p className="text-sd-black/70 mb-6 font-medium">{webglError}</p>
+              <div className="bg-sd-gray p-6 rounded-lg mb-6">
+                <p className="text-sm text-sd-black/70 font-medium">
                   Don't worry! You can still win your voucher by registering.
                 </p>
               </div>
@@ -313,9 +316,9 @@ export default function Game() {
                   handleGoalScored();
                 }}
                 data-testid="button-claim-voucher"
-                className="w-full bg-sd-red hover:bg-sd-red/90 text-white font-bold"
+                className="premium-button w-full h-14 text-lg"
               >
-                Claim Your Voucher
+                CLAIM YOUR VOUCHER
               </Button>
             </div>
           ) : (
@@ -324,7 +327,7 @@ export default function Game() {
               width={320} 
               height={240}
               data-testid="canvas-game"
-              className="w-full h-auto block mx-auto bg-green-100 rounded-lg cursor-pointer"
+              className="w-full h-auto block mx-auto bg-green-100 rounded-lg cursor-pointer shadow-sm"
               onClick={handleCanvasClick}
             />
           )}
@@ -332,62 +335,60 @@ export default function Game() {
           {/* Game Controls Overlay */}
           {gameState === 'ready' && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-black/50 text-white px-4 py-2 rounded-lg text-center">
-                <p className="font-medium">Tap to Shoot!</p>
+              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
+                <p className="font-bold uppercase tracking-wide">TAP TO SHOOT!</p>
               </div>
             </div>
           )}
           
           {gameState === 'shooting' && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-black/50 text-white px-4 py-2 rounded-lg text-center">
-                <p className="font-medium">⚽ Shooting...</p>
+              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
+                <p className="font-bold uppercase tracking-wide">⚽ SHOOTING...</p>
               </div>
             </div>
           )}
         </div>
         
         {/* Game Controls */}
-        <div className="flex justify-center space-x-3 mt-4">
+        <div className="flex justify-center space-x-4 mt-6">
           <Button 
             onClick={resetGame}
             data-testid="button-reset-game"
-            variant="secondary"
-            className="px-4 py-2"
+            className="premium-button-secondary px-6 py-3"
           >
-            Reset Game
+            RESET
           </Button>
           <Button 
             onClick={() => setSoundEnabled(!soundEnabled)}
             data-testid="button-toggle-sound"
-            variant="outline"
-            className="px-4 py-2"
+            className="premium-button-secondary px-6 py-3"
           >
-            {soundEnabled ? "🔊" : "🔇"} Sound
+            {soundEnabled ? "🔊" : "🔇"} SOUND
           </Button>
         </div>
       </section>
 
       {/* Back to Registration */}
-      <div className="text-center">
+      <div className="text-center pt-6 border-t border-sd-light-border mt-8">
         <Button 
           onClick={() => setLocation("/")}
           variant="link"
           data-testid="link-back-to-registration"
-          className="text-primary hover:text-primary/80 font-medium underline"
+          className="text-sd-red hover:text-sd-red/80 font-bold uppercase tracking-wide underline transition-colors"
         >
-          ← Back to Registration
+          ← BACK TO REGISTRATION
         </Button>
       </div>
 
       {/* Goal Celebration Overlay */}
       {showGoalOverlay && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <Card className="max-w-sm mx-4 relative overflow-hidden">
-            <CardContent className="pt-6 text-center">
+        <div className="fixed inset-0 bg-sd-black/90 flex items-center justify-center z-50 fade-in">
+          <Card className="max-w-sm mx-4 relative overflow-hidden premium-card bounce-in">
+            <CardContent className="pt-8 pb-8 text-center">
               {/* Confetti animation */}
               <div className="absolute inset-0 pointer-events-none">
-                {[...Array(20)].map((_, i) => (
+                {[...Array(30)].map((_, i) => (
                   <div
                     key={i}
                     className="confetti"
@@ -399,14 +400,14 @@ export default function Game() {
                 ))}
               </div>
               
-              <h2 className="text-3xl font-bold text-sd-red mb-4">GOAL!</h2>
-              <p className="text-lg mb-6">You've unlocked your voucher!</p>
+              <h2 className="text-5xl font-heading font-black text-sd-red mb-6">GOAL!</h2>
+              <p className="text-xl font-bold text-sd-black mb-8">You've unlocked your exclusive voucher!</p>
               <Button 
                 onClick={goToWin}
                 data-testid="button-view-voucher"
-                className="w-full bg-sd-red hover:bg-sd-red/90 text-white font-bold"
+                className="premium-button w-full h-14 text-lg"
               >
-                View Your Voucher
+                VIEW YOUR VOUCHER
               </Button>
             </CardContent>
           </Card>

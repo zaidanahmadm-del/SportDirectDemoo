@@ -47,19 +47,19 @@ export default function Landing() {
   };
 
   return (
-    <main className="max-w-md mx-auto px-4 py-8">
+    <main className="main-content premium-container py-12 fade-in">
       {/* Hero Section */}
-      <section className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-sd-blue mb-3 leading-tight">
-          Kick Off with Sports Direct
+      <section className="text-center mb-12">
+        <h1 className="text-4xl md:text-5xl font-heading font-black text-sd-blue mb-4 leading-tight">
+          KICK OFF WITH<br />SPORTS DIRECT
         </h1>
-        <p className="text-lg text-muted-foreground mb-6">
-          Register, score the winning goal, and unlock your opening-day voucher.
+        <p className="text-lg text-sd-black/70 mb-8 font-medium">
+          Register, score the winning goal, and unlock your exclusive opening-day voucher.
         </p>
       </section>
 
       {/* Registration Form */}
-      <section className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6">
+      <section className="premium-card p-8 mb-8 bounce-in">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -67,16 +67,16 @@ export default function Landing() {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name *</FormLabel>
+                  <FormLabel className="text-sd-black font-bold text-sm uppercase tracking-wide mb-2">Full Name *</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       data-testid="input-fullname"
                       placeholder="Enter your full name"
-                      className="text-lg py-3"
+                      className="premium-input"
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600 font-medium" />
                 </FormItem>
               )}
             />
@@ -86,17 +86,17 @@ export default function Landing() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email Address *</FormLabel>
+                  <FormLabel className="text-sd-black font-bold text-sm uppercase tracking-wide mb-2">Email Address *</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       data-testid="input-email"
                       type="email"
                       placeholder="your.email@example.com"
-                      className="text-lg py-3"
+                      className="premium-input"
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600 font-medium" />
                 </FormItem>
               )}
             />
@@ -106,17 +106,17 @@ export default function Landing() {
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone Number *</FormLabel>
+                  <FormLabel className="text-sd-black font-bold text-sm uppercase tracking-wide mb-2">Phone Number *</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       data-testid="input-phone"
                       type="tel"
                       placeholder="07XXX XXXXXX"
-                      className="text-lg py-3"
+                      className="premium-input"
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600 font-medium" />
                 </FormItem>
               )}
             />
@@ -124,20 +124,20 @@ export default function Landing() {
             <Button 
               type="submit"
               data-testid="button-start-game"
-              className="w-full bg-sd-red hover:bg-sd-red/90 text-white py-4 text-lg font-bold"
+              className="premium-button w-full h-14 text-lg mt-6"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Starting..." : "Start Game"}
+              {isSubmitting ? "STARTING..." : "START GAME"}
             </Button>
           </form>
         </Form>
       </section>
 
       {/* Terms */}
-      <div className="text-center text-sm text-muted-foreground">
-        <p>
+      <div className="text-center pt-6 border-t border-sd-light-border mt-8">
+        <p className="text-sm text-sd-black/60 font-medium">
           By continuing you agree to the{" "}
-          <a href="#" className="text-primary hover:underline">
+          <a href="#" className="text-sd-red hover:text-sd-red/80 font-bold transition-colors">
             event T&Cs
           </a>
           .
