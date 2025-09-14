@@ -238,7 +238,7 @@ export default function Game() {
     });
     
     // Show celebration
-    setShowGoalOverlay(true);
+    setLocation("/win");
     
     // Reset ball after delay
     setTimeout(() => {
@@ -267,16 +267,17 @@ export default function Game() {
   };
 
   return (
-    <main className="main-content premium-container pt-12 pb-12 fade-in">
+    <main className="main-content premium-container pt-12 pb-12 fade-in flex flex-col items-center">
       {/* Header Section */}
       <section className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-heading font-black text-sd-blue mb-2">
           PENALTY SHOOTOUT
           <div className="h-1 w-24 bg-sd-red mx-auto mt-2 rounded-full"></div>
         </h1>
-        <p className="text-lg text-sd-black/70 mb-8 font-medium">
+        {/* removed message */}
+        {/* <p className="text-lg text-sd-black/70 mb-8 font-medium">
           Tap anywhere to shoot! Keep trying until you score.
-        </p>
+        </p> */}
         
         {/* Game Stats */}
         <div className="flex justify-center space-x-6 mb-6">
@@ -296,8 +297,8 @@ export default function Game() {
       </section>
 
       {/* 3D Game Canvas */}
-      <section className="mb-8">
-        <div className="premium-card p-6 relative bounce-in">
+      <section className="mb-8 w-full flex justify-center">
+        <div className="premium-card p-6 relative bounce-in mx-auto">
           {webglError ? (
             // WebGL Error Fallback
             <div className="bg-white p-8 rounded-lg border-2 border-sd-light-border text-center" data-testid="webgl-error-fallback">
@@ -307,7 +308,7 @@ export default function Game() {
               <div className="bg-sd-gray p-6 rounded-lg mb-6">
                 <p className="text-sm text-sd-black/70 font-medium">
                   Don't worry! You can still win your voucher by registering.
-                </p>
+                </p> */}
               </div>
               <Button 
                 onClick={() => {
@@ -324,10 +325,10 @@ export default function Game() {
           ) : (
             <canvas 
               ref={canvasRef}
-              width={320} 
-              height={240}
+              width={400} 
+              height={300}
               data-testid="canvas-game"
-              className="w-full h-auto block mx-auto bg-green-100 rounded-lg cursor-pointer shadow-sm"
+              className="block mx-auto bg-green-100 rounded-lg cursor-pointer shadow-sm max-w-full"
               onClick={handleCanvasClick}
             />
           )}
