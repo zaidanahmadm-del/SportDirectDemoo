@@ -22,9 +22,6 @@ export default function Game() {
   const [state, setState] = useState<GameState>("ready");
   const [webglError, setWebglError] = useState<string | null>(null);
 
-  // swipe tracking
-  const startPt = useRef<{ x: number; y: number; time: number } | null>(null);
-
   useEffect(() => {
     const user = getUserData();
     if (!user) {
@@ -54,8 +51,7 @@ export default function Game() {
       renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.domElement.style.display = "block";
-      // Important for mobile swiping: prevent page scroll/zoom during gestures
-      (renderer.domElement.style as any).touchAction = "none";
+      (renderer.domElement.style as any).touchAction = "manipulation"; // taps without scroll hijack
       mount.appendChild(renderer.domElement);
 
       // lights
@@ -131,8 +127,8 @@ export default function Game() {
 
       scene.add(goalGroup);
 
-      // SOCCER BALL — generated texture for clean pentagon/hex pattern
-      const soccerTex = makeSoccerTexture(2048, 1024); // runtime CanvasTexture
+      // Soccer ball (procedural texture like a classic black/white ball)
+      const soccerTex = makeSoccerTexture(2048, 1024);
       const ball = new THREE.Mesh(
         new THREE.SphereGeometry(0.3, 64, 64),
         new THREE.MeshPhysicalMaterial({
@@ -141,24 +137,23 @@ export default function Game() {
           metalness: 0.0,
           clearcoat: 0.6,
           clearcoatRoughness: 0.25,
-          sheen: 0.0,
         })
       );
       resetBall(ball);
       scene.add(ball);
 
-      // store refs
+      // refs
       rendererRef.current = renderer;
       sceneRef.current = scene;
       cameraRef.current = camera;
       ballRef.current = ball;
       goalGroupRef.current = goalGroup;
 
-      // size to wrapper (bigger: 16/9, max-w 820px)
+      // size to wrapper (bigger 16:9, contained)
       const onResize = () => {
         const r = mount.getBoundingClientRect();
         const width = Math.floor(r.width);
-        const height = Math.floor((9 / 16) * width); // match CSS aspect
+        const height = Math.floor((9 / 16) * width);
         renderer.setSize(width, height, false);
         const s = renderer.domElement.style;
         s.width = "100%";
@@ -173,68 +168,48 @@ export default function Game() {
       let t = 0;
       const loop = () => {
         t += 0.016;
-        // wider oscillation so it feels livelier
         goalGroup.position.x = Math.sin(t * 0.6) * 1.8;
         renderer.render(scene, camera);
         rafRef.current = requestAnimationFrame(loop);
       };
       loop();
 
-      // input — robust pointer handling for mobile/desktop swipe
+      // TAP-TO-SHOOT
       const canvas = renderer.domElement;
+      const onTap = (e: MouseEvent | PointerEvent | TouchEvent) => {
+        if (state !== "ready") return;
 
-      const onPointerDown = (e: PointerEvent) => {
+        // Normalize coords inside canvas
         const r = canvas.getBoundingClientRect();
-        startPt.current = {
-          x: e.clientX - r.left,
-          y: e.clientY - r.top,
-          time: performance.now(),
-        };
-      };
-      const onPointerUpAnywhere = (e: PointerEvent) => {
-        if (!startPt.current || state !== "ready") return;
-        const r = canvas.getBoundingClientRect();
-        const end = {
-          x: e.clientX - r.left,
-          y: e.clientY - r.top,
-          time: performance.now(),
-        };
-        const dx = end.x - startPt.current.x;
-        const dy = startPt.current.y - end.y; // upward positive
-        const dt = Math.max(16, end.time - startPt.current.time);
-
-        // require a minimal swipe length to avoid taps
-        if (Math.hypot(dx, dy) < 12) {
-          startPt.current = null;
-          return;
+        let cx = 0, cy = 0;
+        if (e instanceof TouchEvent && e.changedTouches && e.changedTouches[0]) {
+          cx = e.changedTouches[0].clientX;
+          cy = e.changedTouches[0].clientY;
+        } else if ("clientX" in e) {
+          cx = (e as PointerEvent).clientX;
+          cy = (e as PointerEvent).clientY;
         }
+        const x = cx - r.left;
+        const y = cy - r.top;
 
-        const power =
-          Math.min(1.0, Math.hypot(dx, dy) / 280) * (dt < 800 ? 1.0 : 0.75);
-        const dirX = THREE.MathUtils.clamp(dx / (r.width * 0.5), -0.9, 0.9);
+        // map to dir/power
+        const dirX = THREE.MathUtils.clamp((x / r.width) * 2 - 1, -0.95, 0.95); // -1..1
+        const heightFactor = THREE.MathUtils.clamp(1 - y / r.height, 0, 1);     // top taps = stronger
+        const power = THREE.MathUtils.clamp(0.55 + heightFactor * 0.55, 0.55, 1.1);
 
         shoot(power, dirX);
-        startPt.current = null;
       };
 
-      canvas.addEventListener("pointerdown", onPointerDown, { passive: true });
-      window.addEventListener("pointerup", onPointerUpAnywhere, {
-        passive: true,
-      });
-      window.addEventListener("pointercancel", onPointerUpAnywhere, {
-        passive: true,
-      });
-      window.addEventListener("pointerleave", onPointerUpAnywhere, {
-        passive: true,
-      });
+      canvas.addEventListener("pointerup", onTap as any, { passive: true });
+      canvas.addEventListener("click", onTap as any, { passive: true });
+      canvas.addEventListener("touchend", onTap as any, { passive: true });
 
       // cleanup
       return () => {
         window.removeEventListener("resize", onResize);
-        canvas.removeEventListener("pointerdown", onPointerDown as any);
-        window.removeEventListener("pointerup", onPointerUpAnywhere as any);
-        window.removeEventListener("pointercancel", onPointerUpAnywhere as any);
-        window.removeEventListener("pointerleave", onPointerUpAnywhere as any);
+        canvas.removeEventListener("pointerup", onTap as any);
+        canvas.removeEventListener("click", onTap as any);
+        canvas.removeEventListener("touchend", onTap as any);
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         renderer.dispose();
         mount.removeChild(renderer.domElement);
@@ -248,7 +223,7 @@ export default function Game() {
   function resetBall(b?: THREE.Mesh) {
     const m = b || ballRef.current;
     if (!m) return;
-    // clearly visible: slightly higher and in front
+    // visible in frame
     m.position.set(0, 0.34, -1.0);
     m.rotation.set(0, 0, 0);
   }
@@ -263,7 +238,7 @@ export default function Game() {
     const ball = ballRef.current;
     const start = ball.position.clone();
     const gx = goalGroupRef.current.position.x;
-    const goalX = gx + THREE.MathUtils.clamp(dirX * 2.1, -2.6, 2.6);
+    const goalX = gx + THREE.MathUtils.clamp(dirX * 2.2, -2.6, 2.6);
     const end = new THREE.Vector3(goalX, 1.0 + power * 0.9, -6.05);
     const apex = new THREE.Vector3(
       THREE.MathUtils.lerp(start.x, end.x, 0.5),
@@ -271,7 +246,7 @@ export default function Game() {
       THREE.MathUtils.lerp(start.z, end.z, 0.5)
     );
 
-    const total = 950; // ms
+    const total = 900;
     const t0 = performance.now();
 
     const tick = () => {
@@ -284,7 +259,7 @@ export default function Game() {
       const p3 = end.clone().multiplyScalar(k * k);
       const pos = new THREE.Vector3().add(p1).add(p2).add(p3);
       ball.position.copy(pos);
-      ball.rotation.x -= 0.38;
+      ball.rotation.x -= 0.4;
 
       if (k >= 1) {
         const gxNow = goalGroupRef.current!.position.x;
@@ -334,11 +309,11 @@ export default function Game() {
           <div className="h-1 w-24 bg-sd-red mx-auto mt-2 rounded-full" />
         </h1>
         <p className="text-sd-black/70 font-medium">
-          Swipe to shoot. Score once to unlock your voucher.
+          Tap anywhere on the pitch to shoot. Score once to unlock your voucher.
         </p>
       </section>
 
-      {/* Bigger canvas: kept inside the card, 16:9 aspect, no overflow */}
+      {/* Bigger canvas: 16:9, kept inside the card */}
       <section className="w-full flex flex-col items-center">
         <div
           ref={mountRef}
@@ -368,33 +343,28 @@ export default function Game() {
   );
 }
 
-/** -------- Soccer texture generator (CanvasTexture) --------
- * Procedurally paints pentagon/hex panels across latitude bands,
- * then returns a THREE.CanvasTexture for a clean black/white ball.
- */
+/** -------- Soccer texture generator (CanvasTexture) -------- */
 function makeSoccerTexture(w = 2048, h = 1024): THREE.Texture {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
   // base
-  ctx.fillStyle = "#efefef";
+  ctx.fillStyle = "#eeeeee";
   ctx.fillRect(0, 0, w, h);
 
   // subtle noise
   const noise = ctx.createImageData(w, h);
   for (let i = 0; i < noise.data.length; i += 4) {
-    const n = 240 + Math.random() * 15;
+    const n = 238 + Math.random() * 12;
     noise.data[i] = n;
     noise.data[i + 1] = n;
     noise.data[i + 2] = n;
-    noise.data[i + 3] = 14;
+    noise.data[i + 3] = 16;
   }
   ctx.putImageData(noise, 0, 0);
 
-  // draw panels
-  ctx.save();
-  ctx.globalCompositeOperation = "source-over";
+  // panels
   const rows = 8;
   for (let r = 1; r < rows; r++) {
     const y = Math.round((r / rows) * h);
@@ -407,13 +377,6 @@ function makeSoccerTexture(w = 2048, h = 1024): THREE.Texture {
       drawPolygon(ctx, cx, cy, radius, sides, "#1b1b1b");
     }
   }
-  ctx.restore();
-
-  // slight blur by overlay
-  ctx.globalAlpha = 0.25;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, w, h);
-  ctx.globalAlpha = 1;
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
