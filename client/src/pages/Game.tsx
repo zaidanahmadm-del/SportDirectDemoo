@@ -267,14 +267,14 @@ export default function Game() {
   };
 
   return (
-    <main className="main-content premium-container py-12 fade-in flex flex-col items-center">
+    <main className="main-content premium-container pt-12 pb-12 fade-in flex flex-col items-center">
       {/* Header Section */}
       <section className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-heading font-black text-sd-blue mb-2">
           PENALTY SHOOTOUT
           <div className="h-1 w-24 bg-sd-red mx-auto mt-2 rounded-full"></div>
         </h1>
-        
+  
         {/* Game Stats */}
         <div className="flex justify-center space-x-6 mb-6">
           <div className="premium-card px-6 py-4 text-center">
@@ -291,7 +291,7 @@ export default function Game() {
           </div>
         </div>
       </section>
-
+  
       {/* 3D Game Canvas */}
       <section className="mb-8 w-full flex flex-col items-center">
         <div className="premium-card p-6 relative bounce-in mx-auto w-full max-w-[680px]">
@@ -306,9 +306,8 @@ export default function Game() {
                   Don't worry! You can still win your voucher by registering.
                 </p>
               </div>
-              <Button 
+              <Button
                 onClick={() => {
-                  // Simulate goal for fallback users
                   setGoals(1);
                   handleGoalScored();
                 }}
@@ -319,44 +318,28 @@ export default function Game() {
               </Button>
             </div>
           ) : (
-            <canvas 
+            <canvas
               ref={canvasRef}
-              width={480} 
+              width={480}
               height={320}
               data-testid="canvas-game"
               className="block mx-auto bg-green-100 rounded-lg cursor-pointer shadow-sm w-[min(100%,680px)] h-auto"
               onClick={handleCanvasClick}
             />
           )}
-          
-          {/* Game Controls Overlay */}
-          {gameState === 'ready' && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
-                <p className="font-bold uppercase tracking-wide">TAP TO SHOOT!</p>
-              </div>
-            </div>
-          )}
-          
-          {gameState === 'shooting' && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
-                <p className="font-bold uppercase tracking-wide">⚽ SHOOTING...</p>
-              </div>
-            </div>
-          )}
         </div>
-        
+  
         {/* Game Controls */}
         <div className="flex justify-center items-center gap-4 mt-6 flex-wrap w-full max-w-[680px]">
-          <Button 
+          <Button
             onClick={resetGame}
             data-testid="button-reset-game"
             className="premium-button-secondary px-6 py-3"
           >
             RESET
           </Button>
-          <Button 
+  
+          <Button
             onClick={() => setSoundEnabled(!soundEnabled)}
             data-testid="button-toggle-sound"
             className="premium-button-secondary px-6 py-3"
@@ -365,10 +348,10 @@ export default function Game() {
           </Button>
         </div>
       </section>
-
+  
       {/* Back to Registration */}
       <div className="text-center pt-6 border-t border-sd-light-border mt-8">
-        <Button 
+        <Button
           onClick={() => setLocation("/")}
           variant="link"
           data-testid="link-back-to-registration"
@@ -377,24 +360,6 @@ export default function Game() {
           ← BACK TO REGISTRATION
         </Button>
       </div>
-
-      {/* Goal Celebration Overlay */}
-      
-              </div>
-              
-              <h2 className="text-5xl font-heading font-black text-sd-red mb-6">GOAL!</h2>
-              <p className="text-xl font-bold text-sd-black mb-8">You've unlocked your exclusive voucher!</p>
-              <Button 
-                onClick={goToWin}
-                data-testid="button-view-voucher"
-                className="premium-button w-full h-14 text-lg"
-              >
-                VIEW YOUR VOUCHER
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </main>
   );
 }
