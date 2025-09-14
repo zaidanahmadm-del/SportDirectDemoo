@@ -380,7 +380,7 @@ export default function Game() {
 
       {/* Goal Celebration Overlay */}
       {showGoalOverlay && (
-        <div className="fixed inset-0 bg-sd-black/90 flex items-center justify-center z-50 fade-in">
+        <div className="fixed inset-0 bg-sd-black/90 flex items-center justify-center z-50 fade-in pointer-events-auto">
           <Card className="max-w-sm mx-4 relative overflow-hidden premium-card bounce-in">
             <CardContent className="pt-8 pb-8 text-center">
               {/* Confetti animation */}
