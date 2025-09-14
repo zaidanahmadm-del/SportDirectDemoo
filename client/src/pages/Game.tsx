@@ -1,406 +1,355 @@
-import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
+import * as THREE from "three";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { getUserData, setVoucherData } from "@/utils/storage";
 import { generateVoucherCode } from "@/utils/voucher";
-
-type GameState = "ready" | "shooting" | "goal" | "miss";
 
 export default function Game() {
   const [, setLocation] = useLocation();
 
-  const mountRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer>();
-  const sceneRef = useRef<THREE.Scene>();
-  const cameraRef = useRef<THREE.PerspectiveCamera>();
-  const ballRef = useRef<THREE.Mesh>();
-  const goalGroupRef = useRef<THREE.Group>();
-  const rafRef = useRef<number>();
-
   const [attempts, setAttempts] = useState(0);
   const [goals, setGoals] = useState(0);
-  const [state, setState] = useState<GameState>("ready");
+  const [gameState, setGameState] = useState<"ready" | "shooting" | "goal" | "miss">("ready");
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showGoalOverlay, setShowGoalOverlay] = useState(false);
   const [webglError, setWebglError] = useState<string | null>(null);
 
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sceneRef = useRef<{
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    renderer: THREE.WebGLRenderer;
+    ball: THREE.Mesh;
+    goal: THREE.Group;
+    animationId?: number;
+  }>();
+
+  // Redirect if not registered
   useEffect(() => {
-    const user = getUserData();
-    if (!user) {
+    const userData = getUserData();
+    if (!userData) {
       setLocation("/");
       return;
     }
   }, [setLocation]);
 
+  // Init Three.js
   useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
+    if (!canvasRef.current) return;
 
     try {
-      // scene
+      const canvas = canvasRef.current;
+
       const scene = new THREE.Scene();
-      scene.background = new THREE.TextureLoader().load(
-        "/penalty3d/textures/backdrop.png"
-      );
+      const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 
-      // camera
-      const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
-      camera.position.set(0, 2.4, 7.2);
-      camera.lookAt(0, 1.2, -6);
+      renderer.setSize(canvas.width, canvas.height);
+      renderer.setClearColor(0x87ceeb); // sky blue
 
-      // renderer
-      const renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-      renderer.outputColorSpace = THREE.SRGBColorSpace;
-      renderer.domElement.style.display = "block";
-      (renderer.domElement.style as any).touchAction = "manipulation"; // taps without scroll hijack
-      mount.appendChild(renderer.domElement);
-
-      // lights
-      const hemi = new THREE.HemisphereLight(0xffffff, 0x335522, 0.9);
-      scene.add(hemi);
+      // Lights
+      scene.add(new THREE.AmbientLight(0x404040, 0.6));
       const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-      dir.position.set(6, 8, 4);
+      dir.position.set(0, 10, 5);
       scene.add(dir);
 
-      // pitch
-      const texLoader = new THREE.TextureLoader();
-      const grass = texLoader.load("/penalty3d/textures/grass_tile.png", (t) => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.repeat.set(8, 8);
-        t.colorSpace = THREE.SRGBColorSpace;
-      });
-      const pitch = new THREE.Mesh(
-        new THREE.PlaneGeometry(40, 30),
-        new THREE.MeshPhysicalMaterial({ map: grass, roughness: 0.92 })
+      // Ground
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(20, 20),
+        new THREE.MeshLambertMaterial({ color: 0x00aa00 })
       );
-      pitch.rotation.x = -Math.PI / 2;
-      scene.add(pitch);
+      ground.rotation.x = -Math.PI / 2;
+      scene.add(ground);
 
-      // field lines
-      const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const line = (w: number, h: number, z: number, x = 0) => {
-        const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lineMat);
-        m.position.set(x, 0.001, z);
-        m.rotation.x = -Math.PI / 2;
-        m.renderOrder = 2;
-        scene.add(m);
-      };
-      line(16, 0.06, -6); // goal line
-      line(0.06, 11, -2, -8);
-      line(0.06, 11, -2, 8);
-      line(16, 0.06, -2); // top of box
-      line(0.06, 30, 0); // mid line
+      // Goal
+      const goal = new THREE.Group();
+      const postMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      const postGeo = new THREE.BoxGeometry(0.1, 2.4, 0.1);
+      const leftPost = new THREE.Mesh(postGeo, postMat);
+      leftPost.position.set(-3.6, 1.2, -8);
+      goal.add(leftPost);
+      const rightPost = new THREE.Mesh(postGeo, postMat);
+      rightPost.position.set(3.6, 1.2, -8);
+      goal.add(rightPost);
+      const crossbar = new THREE.Mesh(new THREE.BoxGeometry(7.3, 0.1, 0.1), postMat);
+      crossbar.position.set(0, 2.4, -8);
+      goal.add(crossbar);
+      scene.add(goal);
 
-      // goal + net
-      const goalGroup = new THREE.Group();
-      const postMat = new THREE.MeshStandardMaterial({
-        color: 0xf5f7fb,
-        metalness: 0.1,
-        roughness: 0.35,
-      });
-      const postL = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.08, 2.44, 16),
-        postMat
-      );
-      postL.position.set(-3.66, 1.22, -6);
-      const postR = postL.clone();
-      postR.position.x = 3.66;
-      const bar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.08, 7.32, 16),
-        postMat
-      );
-      bar.rotation.z = Math.PI / 2;
-      bar.position.set(0, 2.44, -6);
-      goalGroup.add(postL, postR, bar);
-
-      const netTex = texLoader.load("/penalty3d/textures/net_alpha.png", (t) => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.repeat.set(1.5, 1);
-      });
-      const netMat = new THREE.MeshBasicMaterial({
-        map: netTex,
-        transparent: true,
-        opacity: 0.92,
-      });
-      const net = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 2.4), netMat);
-      net.position.set(0, 1.2, -6.03);
-      goalGroup.add(net);
-
-      scene.add(goalGroup);
-
-      // Soccer ball (procedural texture like a classic black/white ball)
-      const soccerTex = makeSoccerTexture(2048, 1024);
+      // Ball
       const ball = new THREE.Mesh(
-        new THREE.SphereGeometry(0.3, 64, 64),
-        new THREE.MeshPhysicalMaterial({
-          map: soccerTex,
-          roughness: 0.45,
-          metalness: 0.0,
-          clearcoat: 0.6,
-          clearcoatRoughness: 0.25,
-        })
+        new THREE.SphereGeometry(0.15, 16, 16),
+        new THREE.MeshLambertMaterial({ color: 0xffffff })
       );
-      resetBall(ball);
+      ball.position.set(0, 0.15, 5);
       scene.add(ball);
 
-      // refs
-      rendererRef.current = renderer;
-      sceneRef.current = scene;
-      cameraRef.current = camera;
-      ballRef.current = ball;
-      goalGroupRef.current = goalGroup;
+      // Camera
+      camera.position.set(0, 2, 8);
+      camera.lookAt(0, 1, -5);
 
-      // size to wrapper (bigger 16:9, contained)
-      const onResize = () => {
-        const r = mount.getBoundingClientRect();
-        const width = Math.floor(r.width);
-        const height = Math.floor((9 / 16) * width);
-        renderer.setSize(width, height, false);
-        const s = renderer.domElement.style;
-        s.width = "100%";
-        s.height = "100%";
-        camera.aspect = width / height;
-        camera.updateProjectionMatrix();
+      sceneRef.current = { scene, camera, renderer, ball, goal };
+
+      // Move goal left-right
+      startGoalAnimation();
+
+      // Render loop
+      const animate = () => {
+        if (!sceneRef.current) return;
+        sceneRef.current.renderer.render(scene, camera);
+        sceneRef.current.animationId = requestAnimationFrame(animate);
       };
-      onResize();
-      window.addEventListener("resize", onResize);
-
-      // animate
-      let t = 0;
-      const loop = () => {
-        t += 0.016;
-        goalGroup.position.x = Math.sin(t * 0.6) * 1.8;
-        renderer.render(scene, camera);
-        rafRef.current = requestAnimationFrame(loop);
-      };
-      loop();
-
-      // TAP-TO-SHOOT
-      const canvas = renderer.domElement;
-      const onTap = (e: MouseEvent | PointerEvent | TouchEvent) => {
-        if (state !== "ready") return;
-
-        // Normalize coords inside canvas
-        const r = canvas.getBoundingClientRect();
-        let cx = 0, cy = 0;
-        if (e instanceof TouchEvent && e.changedTouches && e.changedTouches[0]) {
-          cx = e.changedTouches[0].clientX;
-          cy = e.changedTouches[0].clientY;
-        } else if ("clientX" in e) {
-          cx = (e as PointerEvent).clientX;
-          cy = (e as PointerEvent).clientY;
-        }
-        const x = cx - r.left;
-        const y = cy - r.top;
-
-        // map to dir/power
-        const dirX = THREE.MathUtils.clamp((x / r.width) * 2 - 1, -0.95, 0.95); // -1..1
-        const heightFactor = THREE.MathUtils.clamp(1 - y / r.height, 0, 1);     // top taps = stronger
-        const power = THREE.MathUtils.clamp(0.55 + heightFactor * 0.55, 0.55, 1.1);
-
-        shoot(power, dirX);
-      };
-
-      canvas.addEventListener("pointerup", onTap as any, { passive: true });
-      canvas.addEventListener("click", onTap as any, { passive: true });
-      canvas.addEventListener("touchend", onTap as any, { passive: true });
-
-      // cleanup
-      return () => {
-        window.removeEventListener("resize", onResize);
-        canvas.removeEventListener("pointerup", onTap as any);
-        canvas.removeEventListener("click", onTap as any);
-        canvas.removeEventListener("touchend", onTap as any);
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        renderer.dispose();
-        mount.removeChild(renderer.domElement);
-      };
+      animate();
     } catch (err) {
-      console.error(err);
-      setWebglError("Your device does not support WebGL required for 3D.");
-    }
-  }, [state]);
-
-  function resetBall(b?: THREE.Mesh) {
-    const m = b || ballRef.current;
-    if (!m) return;
-    // visible in frame
-    m.position.set(0, 0.34, -1.0);
-    m.rotation.set(0, 0, 0);
-  }
-
-  function shoot(power: number, dirX: number) {
-    if (!sceneRef.current || !ballRef.current || !goalGroupRef.current || state !== "ready") {
+      console.error("WebGL init failed:", err);
+      setWebglError(
+        "Your device does not support WebGL, which is required for the 3D game. Please try a different browser or device."
+      );
       return;
     }
-    setState("shooting");
-    setAttempts((a) => a + 1);
 
-    const ball = ballRef.current;
-    const start = ball.position.clone();
-    const gx = goalGroupRef.current.position.x;
-    const goalX = gx + THREE.MathUtils.clamp(dirX * 2.2, -2.6, 2.6);
-    const end = new THREE.Vector3(goalX, 1.0 + power * 0.9, -6.05);
-    const apex = new THREE.Vector3(
-      THREE.MathUtils.lerp(start.x, end.x, 0.5),
-      2.25 + power * 1.5,
-      THREE.MathUtils.lerp(start.z, end.z, 0.5)
-    );
+    return () => {
+      if (sceneRef.current?.animationId) cancelAnimationFrame(sceneRef.current.animationId);
+      if (sceneRef.current?.renderer) sceneRef.current.renderer.dispose();
+    };
+  }, []);
 
-    const total = 900;
-    const t0 = performance.now();
+  const startGoalAnimation = () => {
+    if (!sceneRef.current) return;
+    const { goal } = sceneRef.current;
+    let direction = 1;
+    const speed = 0.02;
+    const maxX = 2;
 
     const tick = () => {
-      const t = (performance.now() - t0) / total;
-      const k = Math.min(1, t);
+      if (!sceneRef.current) return;
+      goal.position.x += direction * speed;
+      if (goal.position.x > maxX || goal.position.x < -maxX) direction *= -1;
+      requestAnimationFrame(tick);
+    };
+    tick();
+  };
 
-      // Quadratic Bezier
-      const p1 = start.clone().multiplyScalar((1 - k) * (1 - k));
-      const p2 = apex.clone().multiplyScalar(2 * (1 - k) * k);
-      const p3 = end.clone().multiplyScalar(k * k);
-      const pos = new THREE.Vector3().add(p1).add(p2).add(p3);
-      ball.position.copy(pos);
-      ball.rotation.x -= 0.4;
+  const shootBall = (clickX: number, clickY: number) => {
+    if (!sceneRef.current || gameState !== "ready") return;
 
-      if (k >= 1) {
-        const gxNow = goalGroupRef.current!.position.x;
-        const left = -3.6 + gxNow,
-          right = 3.6 + gxNow,
-          barY = 2.44;
-        const inside =
-          pos.z <= -5.95 &&
-          pos.x > left + 0.12 &&
-          pos.x < right - 0.12 &&
-          pos.y > 0.1 &&
-          pos.y < barY - 0.1;
+    setGameState("shooting");
+    setAttempts((p) => p + 1);
 
-        if (inside) {
-          setGoals((g) => g + 1);
-          setState("goal");
-          onScored();
+    const { ball } = sceneRef.current;
+    const canvas = canvasRef.current!;
+    const spreadX = (clickX / canvas.width - 0.5) * 0.5 + (Math.random() - 0.5) * 0.2;
+    const spreadY = (0.5 - clickY / canvas.height) * 0.3 + Math.random() * 0.2;
+
+    const startPos = ball.position.clone();
+    const targetPos = new THREE.Vector3(spreadX * 8, 1 + spreadY * 2, -8);
+
+    const duration = 1000;
+    const start = Date.now();
+
+    const step = () => {
+      const t = Math.min((Date.now() - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+
+      ball.position.lerpVectors(startPos, targetPos, ease);
+      ball.position.y = startPos.y + Math.sin(t * Math.PI) * 2;
+
+      if (t >= 1) {
+        const inGoal =
+          ball.position.x > -3.6 &&
+          ball.position.x < 3.6 &&
+          ball.position.y > 0 &&
+          ball.position.y < 2.4 &&
+          ball.position.z <= -7.8;
+
+        if (inGoal) {
+          setGoals((p) => p + 1);
+          setGameState("goal");
+          handleGoalScored();
         } else {
-          setState("miss");
+          setGameState("miss");
           setTimeout(() => {
             resetBall();
-            setState("ready");
-          }, 550);
+            setGameState("ready");
+          }, 1000);
         }
         return;
       }
-      rafRef.current = requestAnimationFrame(tick);
+
+      requestAnimationFrame(step);
     };
 
-    rafRef.current = requestAnimationFrame(tick);
-  }
+    step();
+  };
 
-  function onScored() {
-    const user = getUserData();
-    if (user) {
-      const code = generateVoucherCode(user.email);
-      setVoucherData({ won: true, code, time: new Date().toISOString() });
-    }
-    setTimeout(() => setLocation("/win"), 500);
-  }
+  const resetBall = () => {
+    if (!sceneRef.current) return;
+    sceneRef.current.ball.position.set(0, 0.15, 5);
+  };
+
+  const handleGoalScored = () => {
+    const userData = getUserData();
+    if (!userData) return;
+
+    const voucherCode = generateVoucherCode(userData.email);
+    setVoucherData({
+      won: true,
+      code: voucherCode,
+      time: new Date().toISOString(),
+    });
+
+    // Show celebration overlay (no instant redirect)
+    setShowGoalOverlay(true);
+
+    setTimeout(() => {
+      resetBall();
+      setGameState("ready");
+    }, 1500);
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    shootBall(e.clientX - rect.left, e.clientY - rect.top);
+  };
+
+  const resetGame = () => {
+    setAttempts(0);
+    setGoals(0);
+    setGameState("ready");
+    resetBall();
+  };
+
+  const goToWin = () => {
+    setShowGoalOverlay(false);
+    setLocation("/win");
+  };
 
   return (
     <main className="main-content premium-container pt-12 pb-12 fade-in flex flex-col items-center">
-      <section className="text-center mb-4">
+      {/* Header Section */}
+      <section className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-heading font-black text-sd-blue mb-2">
           PENALTY SHOOTOUT
           <div className="h-1 w-24 bg-sd-red mx-auto mt-2 rounded-full" />
         </h1>
-        <p className="text-sd-black/70 font-medium">
-          Tap anywhere on the pitch to shoot. Score once to unlock your voucher.
-        </p>
-      </section>
 
-      {/* Bigger canvas: 16:9, kept inside the card */}
-      <section className="w-full flex flex-col items-center">
-        <div
-          ref={mountRef}
-          className="premium-card relative w-full max-w-[820px] overflow-hidden"
-          style={{ aspectRatio: "16 / 9" }}
-        />
-        <div className="flex justify-center items-center gap-4 mt-6 flex-wrap w-full max-w-[820px]">
-          <div className="premium-card px-6 py-3 text-center">
-            <div className="text-2xl font-heading font-black text-sd-blue">
+        {/* Subtitle (clear + action-oriented) */}
+        <p className="text-base md:text-lg text-sd-black/70 mt-3 mb-8 font-medium">
+          Tap the goal to shoot. <span className="text-sd-red font-bold">Score once to unlock your voucher.</span>
+        </p>
+
+        {/* Game Stats */}
+        <div className="flex justify-center space-x-6 mb-6">
+          <div className="premium-card px-6 py-4 text-center">
+            <div className="text-3xl font-heading font-black text-sd-blue" data-testid="text-attempts">
               {attempts}
             </div>
-            <div className="text-xs text-sd-black/60 font-bold uppercase tracking-wide">
-              Attempts
-            </div>
+            <div className="text-sm text-sd-black/60 font-bold uppercase tracking-wide">Attempts</div>
           </div>
-          <div className="premium-card px-6 py-3 text-center">
-            <div className="text-2xl font-heading font-black text-sd-red">
+          <div className="premium-card px-6 py-4 text-center">
+            <div className="text-3xl font-heading font-black text-sd-red" data-testid="text-goals">
               {goals}
             </div>
-            <div className="text-xs text-sd-black/60 font-bold uppercase tracking-wide">
-              Goals
-            </div>
+            <div className="text-sm text-sd-black/60 font-bold uppercase tracking-wide">Goals</div>
           </div>
         </div>
       </section>
+
+      {/* 3D Game Canvas */}
+      <section className="mb-8 w-full flex flex-col items-center">
+        <div className="premium-card p-6 relative overflow-hidden bounce-in mx-auto w-full max-w-[680px]">
+          {webglError ? (
+            <div
+              className="bg-white p-8 rounded-lg border-2 border-sd-light-border text-center"
+              data-testid="webgl-error-fallback"
+            >
+              <div className="text-6xl mb-6">⚽</div>
+              <h3 className="text-2xl font-heading font-black text-sd-blue mb-4">3D GAME UNAVAILABLE</h3>
+              <p className="text-sd-black/70 mb-6 font-medium">{webglError}</p>
+              <div className="bg-sd-gray p-6 rounded-lg mb-6">
+                <p className="text-sm text-sd-black/70 font-medium">
+                  Don't worry! You can still win your voucher by registering.
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setGoals(1);
+                  handleGoalScored();
+                }}
+                data-testid="button-claim-voucher"
+                className="premium-button w-full h-14 text-lg"
+              >
+                CLAIM YOUR VOUCHER
+              </Button>
+            </div>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={480}
+              height={320}
+              data-testid="canvas-game"
+              className="block mx-auto bg-green-100 rounded-lg cursor-pointer shadow-sm w-full max-w-full h-auto"
+              onClick={handleCanvasClick}
+            />
+          )}
+        </div>
+
+        {/* Game Controls */}
+        <div className="flex justify-center items-center gap-4 mt-6 flex-wrap w-full max-w-[680px]">
+          <Button onClick={resetGame} data-testid="button-reset-game" className="premium-button-secondary px-6 py-3">
+            RESET
+          </Button>
+
+          <Button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            data-testid="button-toggle-sound"
+            className="premium-button-secondary px-6 py-3"
+          >
+            {soundEnabled ? "🔊" : "🔇"} SOUND
+          </Button>
+        </div>
+      </section>
+
+      {/* Goal Celebration Overlay */}
+      {showGoalOverlay && (
+        <div className="fixed inset-0 bg-sd-black/90 flex items-center justify-center z-50 fade-in pointer-events-auto">
+          <Card className="max-w-sm mx-4 relative overflow-hidden premium-card bounce-in">
+            <CardContent className="pt-8 pb-8 text-center">
+              {/* Confetti */}
+              <div className="absolute inset-0 pointer-events-none">
+                {[...Array(30)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="confetti"
+                    style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 3}s` }}
+                  />
+                ))}
+              </div>
+
+              <h2 className="text-5xl font-heading font-black text-sd-red mb-6">GOAL!</h2>
+              <p className="text-xl font-bold text-sd-black mb-8">You've unlocked your exclusive voucher!</p>
+
+              <Button data-testid="button-view-voucher" className="premium-button w-full h-14 text-lg" onClick={goToWin}>
+                VIEW YOUR VOUCHER
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Back to Registration */}
+      <div className="text-center pt-6 border-t border-sd-light-border mt-8">
+        <Button
+          onClick={() => setLocation("/")}
+          variant="link"
+          data-testid="link-back-to-registration"
+          className="text-sd-red hover:text-sd-red/80 font-bold uppercase tracking-wide underline transition-colors"
+        >
+          ← BACK TO REGISTRATION
+        </Button>
+      </div>
     </main>
   );
-}
-
-/** -------- Soccer texture generator (CanvasTexture) -------- */
-function makeSoccerTexture(w = 2048, h = 1024): THREE.Texture {
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
-  // base
-  ctx.fillStyle = "#eeeeee";
-  ctx.fillRect(0, 0, w, h);
-
-  // subtle noise
-  const noise = ctx.createImageData(w, h);
-  for (let i = 0; i < noise.data.length; i += 4) {
-    const n = 238 + Math.random() * 12;
-    noise.data[i] = n;
-    noise.data[i + 1] = n;
-    noise.data[i + 2] = n;
-    noise.data[i + 3] = 16;
-  }
-  ctx.putImageData(noise, 0, 0);
-
-  // panels
-  const rows = 8;
-  for (let r = 1; r < rows; r++) {
-    const y = Math.round((r / rows) * h);
-    const count = 10;
-    for (let i = 0; i < count; i++) {
-      const cx = Math.round(((i + 0.5) / count) * w + (Math.random() * 40 - 20));
-      const cy = y + (Math.random() * 28 - 14);
-      const sides = Math.random() < 0.5 ? 5 : 6;
-      const radius = 26 + Math.random() * 12;
-      drawPolygon(ctx, cx, cy, radius, sides, "#1b1b1b");
-    }
-  }
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
-  return tex;
-}
-
-function drawPolygon(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  r: number,
-  sides: number,
-  fill: string
-) {
-  ctx.fillStyle = fill;
-  ctx.beginPath();
-  for (let k = 0; k < sides; k++) {
-    const a = (k / sides) * Math.PI * 2;
-    const x = cx + r * Math.cos(a);
-    const y = cy + r * Math.sin(a);
-    if (k === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-  ctx.fill();
 }
