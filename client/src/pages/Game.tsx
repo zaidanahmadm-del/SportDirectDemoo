@@ -293,8 +293,8 @@ export default function Game() {
       </section>
 
       {/* 3D Game Canvas */}
-      <section className="mb-8 w-full flex justify-center">
-        <div className="premium-card p-6 relative bounce-in mx-auto">
+      <section className="mb-8 w-full flex flex-col items-center">
+        <div className="premium-card p-6 relative bounce-in mx-auto w-full max-w-[680px]">
           {webglError ? (
             // WebGL Error Fallback
             <div className="bg-white p-8 rounded-lg border-2 border-sd-light-border text-center" data-testid="webgl-error-fallback">
@@ -321,22 +321,34 @@ export default function Game() {
           ) : (
             <canvas 
               ref={canvasRef}
-              width={400} 
-              height={300}
+              width={480} 
+              height={320}
               data-testid="canvas-game"
-              className="block mx-auto bg-green-100 rounded-lg cursor-pointer shadow-sm max-w-full"
+              className="block mx-auto bg-green-100 rounded-lg cursor-pointer shadow-sm w-[min(100%,680px)] h-auto"
               onClick={handleCanvasClick}
             />
           )}
           
           {/* Game Controls Overlay */}
+          {gameState === 'ready' && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
+                <p className="font-bold uppercase tracking-wide">TAP TO SHOOT!</p>
+              </div>
+            </div>
+          )}
           
-          
-          
+          {gameState === 'shooting' && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
+                <p className="font-bold uppercase tracking-wide">⚽ SHOOTING...</p>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Game Controls */}
-        <div className="flex justify-center space-x-4 mt-6">
+        <div className="flex justify-center items-center gap-4 mt-6 flex-wrap w-full max-w-[680px]">
           <Button 
             onClick={resetGame}
             data-testid="button-reset-game"
@@ -366,7 +378,23 @@ export default function Game() {
         </Button>
       </div>
 
+      {/* Goal Celebration Overlay */}
       
+              </div>
+              
+              <h2 className="text-5xl font-heading font-black text-sd-red mb-6">GOAL!</h2>
+              <p className="text-xl font-bold text-sd-black mb-8">You've unlocked your exclusive voucher!</p>
+              <Button 
+                onClick={goToWin}
+                data-testid="button-view-voucher"
+                className="premium-button w-full h-14 text-lg"
+              >
+                VIEW YOUR VOUCHER
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </main>
   );
 }

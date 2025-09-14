@@ -10,12 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { setUserData } from "@/utils/storage";
 
-const normalizePhone = (v:string) => v.replace(/\s+/g, "");
-
 const registrationSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  phone: z.string().regex(/^(?:\+?971|0)5[0-9]{8}$/, "Please enter a valid UAE mobile number"),
+  phone: z.string().regex(/^(\+44|0)[0-9]{10,11}$/, "Please enter a valid UK phone number"),
 });
 
 type RegistrationForm = z.infer<typeof registrationSchema>;
@@ -73,7 +71,6 @@ export default function Landing() {
                   <FormControl>
                     <Input
                       {...field}
-                      onChange={(e) => field.onChange(normalizePhone(e.target.value))}
                       data-testid="input-fullname"
                       placeholder="Enter your full name"
                       className="premium-input"
@@ -93,7 +90,6 @@ export default function Landing() {
                   <FormControl>
                     <Input
                       {...field}
-                      onChange={(e) => field.onChange(normalizePhone(e.target.value))}
                       data-testid="input-email"
                       type="email"
                       placeholder="your.email@example.com"
@@ -114,7 +110,6 @@ export default function Landing() {
                   <FormControl>
                     <Input
                       {...field}
-                      onChange={(e) => field.onChange(normalizePhone(e.target.value))}
                       data-testid="input-phone"
                       type="tel"
                       placeholder="+971 5XXXXXXXX"
