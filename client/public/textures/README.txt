@@ -1,0 +1,1 @@
+Place ball.png, grass.jpg, net.png here. Paths: /textures/ball.png etc.
