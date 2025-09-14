@@ -9,11 +9,11 @@ type GameState = "ready" | "shooting" | "goal" | "miss";
 export default function Game() {
   const [, setLocation] = useLocation();
 
-  // DOM mount and observers
+  // DOM & observers
   const mountRef = useRef<HTMLDivElement>(null);
   const roRef = useRef<ResizeObserver>();
 
-  // three.js refs
+  // three.js
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -21,9 +21,11 @@ export default function Game() {
   const goalGroupRef = useRef<THREE.Group | null>(null);
   const rafRef = useRef<number>();
 
-  // game state
+  // gameplay
   const [attempts, setAttempts] = useState(0);
   const [goals, setGoals] = useState(0);
+  const [showGoalOverlay, setShowGoalOverlay] = useState(false);
+
   const [state, _setState] = useState<GameState>("ready");
   const stateRef = useRef<GameState>("ready");
   const setState = (s: GameState) => {
@@ -31,22 +33,20 @@ export default function Game() {
     _setState(s);
   };
 
-  // gate: must be registered
+  // require registration
   useEffect(() => {
     const user = getUserData();
     if (!user) setLocation("/");
   }, [setLocation]);
 
-  // one-time init of scene
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
 
     try {
-      // scene + camera + renderer
+      // scene/camera/renderer
       const scene = new THREE.Scene();
       const texLoader = new THREE.TextureLoader();
-      // soft sky/stadium backdrop (provide at /public/penalty3d/textures/backdrop.png)
       scene.background = texLoader.load("/penalty3d/textures/backdrop.png");
 
       const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 200);
@@ -58,16 +58,16 @@ export default function Game() {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.domElement.style.display = "block";
       renderer.domElement.style.cursor = "pointer";
-      (renderer.domElement.style as any).touchAction = "manipulation"; // iOS taps
+      (renderer.domElement.style as any).touchAction = "manipulation";
       mount.appendChild(renderer.domElement);
 
-      // lights
+      // lighting
       const hemi = new THREE.HemisphereLight(0xffffff, 0x335522, 0.9);
       const dir = new THREE.DirectionalLight(0xffffff, 0.9);
       dir.position.set(6, 8, 4);
       scene.add(hemi, dir);
 
-      // pitch (seamless tile) + field lines
+      // pitch
       const grass = texLoader.load("/penalty3d/textures/grass_tile.png", (t) => {
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         t.repeat.set(8, 8);
@@ -80,21 +80,22 @@ export default function Game() {
       pitch.rotation.x = -Math.PI / 2;
       scene.add(pitch);
 
+      // field lines
       const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const addLine = (w: number, h: number, z: number, x = 0) => {
         const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lineMat);
         m.position.set(x, 0.001, z);
         m.rotation.x = -Math.PI / 2;
-        m.renderOrder = 2; // render over grass
+        m.renderOrder = 2;
         scene.add(m);
       };
-      addLine(16, 0.06, -6); // goal line
-      addLine(0.06, 11, -2, -8); // box left
-      addLine(0.06, 11, -2, 8); // box right
-      addLine(16, 0.06, -2); // box top
-      addLine(0.06, 30, 0); // mid line
+      addLine(16, 0.06, -6);
+      addLine(0.06, 11, -2, -8);
+      addLine(0.06, 11, -2, 8);
+      addLine(16, 0.06, -2);
+      addLine(0.06, 30, 0);
 
-      // goal posts + net
+      // goal + net
       const goalGroup = new THREE.Group();
       const postMat = new THREE.MeshStandardMaterial({
         color: 0xf5f7fb,
@@ -133,63 +134,63 @@ export default function Game() {
       net.name = "goalNet";
       net.position.set(0, 1.2, -6.03);
       goalGroup.add(net);
-
       scene.add(goalGroup);
 
-      // ball (higher poly + PBR params)
-      const ballColor = texLoader.load("/penalty3d/textures/ball_color.png", (t) => {
+      // BALL — use your provided hex texture
+      // Save your image as: public/penalty3d/textures/ball_tile.png
+      const ballTex = texLoader.load("/penalty3d/textures/ball_tile.png", (t) => {
         t.colorSpace = THREE.SRGBColorSpace;
+        t.wrapS = t.wrapT = THREE.RepeatWrapping; // avoid seam stretching
+        t.repeat.set(1, 1);
+        t.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy?.() ?? 8);
       });
       const ballRough = texLoader.load("/penalty3d/textures/ball_roughness.png");
       const ball = new THREE.Mesh(
         new THREE.SphereGeometry(0.32, 64, 64),
         new THREE.MeshPhysicalMaterial({
-          map: ballColor,
+          map: ballTex,
           roughnessMap: ballRough,
           roughness: 0.5,
           metalness: 0.0,
-          clearcoat: 0.8,
+          clearcoat: 0.85,
           clearcoatRoughness: 0.22,
         })
       );
       ball.position.set(0, 0.36, -1.0);
       scene.add(ball);
 
-      // save refs
+      // refs
       rendererRef.current = renderer;
       sceneRef.current = scene;
       cameraRef.current = camera;
       ballRef.current = ball;
       goalGroupRef.current = goalGroup;
 
-      // --- sizing: keep renderer & camera matched to wrapper (16:9) ---
+      // size & alignment (16:9)
       const fitToContainer = () => {
-        if (!mount || !renderer || !camera) return;
         const { width } = mount.getBoundingClientRect();
         const height = Math.max(1, Math.round((9 / 16) * width));
-        renderer.setSize(width, height, true); // update buffer + CSS
+        renderer.setSize(width, height, true); // buffer + CSS
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
       };
       fitToContainer();
-
       roRef.current = new ResizeObserver(fitToContainer);
       roRef.current.observe(mount);
       const onWinResize = () => fitToContainer();
       window.addEventListener("resize", onWinResize);
 
-      // animate
+      // animation loop
       let t = 0;
       const loop = () => {
         t += 0.016;
-        // subtle left-right goal motion
         goalGroup.position.x = Math.sin(t * 0.6) * 1.8;
         renderer.render(scene, camera);
         rafRef.current = requestAnimationFrame(loop);
       };
       loop();
 
-      // tap-to-shoot (single, robust handler)
+      // tap to shoot
       const canvas = renderer.domElement;
       const onTap = (e: MouseEvent | PointerEvent | TouchEvent) => {
         e.preventDefault();
@@ -208,10 +209,8 @@ export default function Game() {
         const x = cx - r.left;
         const y = cy - r.top;
 
-        // horizontal tap -> direction; higher tap -> more power
         const dirX = THREE.MathUtils.clamp((x / r.width) * 2 - 1, -0.95, 0.95);
         const power = THREE.MathUtils.clamp(0.6 + (1 - y / r.height) * 0.6, 0.6, 1.2);
-
         shoot(power, dirX);
       };
       canvas.addEventListener("pointerup", onTap as any, { passive: false });
@@ -253,7 +252,7 @@ export default function Game() {
         const ix = i * 3,
           x = base[ix],
           z = base[ix + 2];
-        const d = 1 - Math.min(1, Math.abs(x) / 3.6); // center stronger
+        const d = 1 - Math.min(1, Math.abs(x) / 3.6);
         pos.array[ix + 2] = z - 0.12 * Math.sin(k * Math.PI) * d;
       }
       pos.needsUpdate = true;
@@ -281,7 +280,7 @@ export default function Game() {
       THREE.MathUtils.lerp(start.z, end.z, 0.5)
     );
 
-    // tiny camera kick
+    // camera kick
     const camStart = camera.position.clone();
     const camT0 = performance.now();
     const camDur = 120;
@@ -297,7 +296,7 @@ export default function Game() {
     };
     requestAnimationFrame(camKick);
 
-    // animate ball along a quadratic bezier
+    // flight
     const total = 900;
     const t0 = performance.now();
 
@@ -311,7 +310,7 @@ export default function Game() {
       const pos = new THREE.Vector3().add(p1).add(p2).add(p3);
 
       ball.position.copy(pos);
-      ball.rotation.x -= 0.42; // spin
+      ball.rotation.x -= 0.42;
 
       if (k >= 1) {
         const gxNow = goal.position.x;
@@ -330,12 +329,13 @@ export default function Game() {
           setState("goal");
           pulseNet();
 
+          // set voucher & show overlay (no auto-redirect)
           const user = getUserData();
           if (user) {
             const code = generateVoucherCode(user.email);
             setVoucherData({ won: true, code, time: new Date().toISOString() });
           }
-          setTimeout(() => setLocation("/win"), 500);
+          setShowGoalOverlay(true);
         } else {
           setState("miss");
           setTimeout(() => {
@@ -363,13 +363,32 @@ export default function Game() {
         </p>
       </section>
 
-      {/* Game canvas wrapper — fixed 16:9 aspect, auto-resizes & stays aligned */}
       <section className="w-full flex flex-col items-center">
         <div
           ref={mountRef}
           className="premium-card relative w-full max-w-[820px] overflow-hidden"
           style={{ aspectRatio: "16 / 9" }}
-        />
+        >
+          {showGoalOverlay && (
+            <div className="absolute inset-0 bg-white/95 flex items-center justify-center p-6">
+              <div className="text-center max-w-sm">
+                <h2 className="text-4xl font-heading font-black text-sd-red mb-3">
+                  GOAL!
+                </h2>
+                <p className="text-sd-black/80 mb-6 font-medium">
+                  You’ve unlocked your exclusive voucher.
+                </p>
+                <button
+                  onClick={() => setLocation("/win")}
+                  className="w-full h-12 rounded-2xl bg-sd-blue text-white font-bold shadow-sm hover:brightness-110 transition"
+                >
+                  VIEW YOUR VOUCHER
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="flex justify-center items-center gap-4 mt-6 flex-wrap w-full max-w-[820px]">
           <div className="premium-card px-6 py-3 text-center">
             <div className="text-2xl font-heading font-black text-sd-blue">
