@@ -261,10 +261,7 @@ export default function Game() {
     resetBall();
   };
 
-  const goToWin = () => {
-    setShowGoalOverlay(false);
-    setShowGoalOverlay(true);
-  };
+  const goToWin = () => { setShowGoalOverlay(false); setLocation("/win"); };
 
   return (
     <main className="main-content premium-container py-12 fade-in flex flex-col items-center">
@@ -330,21 +327,9 @@ export default function Game() {
           )}
           
           {/* Game Controls Overlay */}
-          {gameState === 'ready' && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
-                <p className="font-bold uppercase tracking-wide">TAP TO SHOOT!</p>
-              </div>
-            </div>
-          )}
           
-          {gameState === 'shooting' && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
-                <p className="font-bold uppercase tracking-wide">⚽ SHOOTING...</p>
-              </div>
-            </div>
-          )}
+          
+          
         </div>
         
         {/* Game Controls */}
@@ -403,7 +388,7 @@ export default function Game() {
                 onClick={goToWin}
                 data-testid="button-view-voucher"
                 className="premium-button w-full h-14 text-lg"
-              >
+               onClick={goToWin}>
                 VIEW YOUR VOUCHER
               </Button>
             </CardContent>
