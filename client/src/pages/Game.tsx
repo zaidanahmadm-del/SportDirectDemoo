@@ -11,23 +11,23 @@ export default function Game() {
   const [, setLocation] = useLocation();
 
   const mountRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer>();
-  const sceneRef = useRef<THREE.Scene>();
-  const cameraRef = useRef<THREE.PerspectiveCamera>();
-  const ballRef = useRef<THREE.Mesh>();
-  const goalGroupRef = useRef<THREE.Group>();
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const ballRef = useRef<THREE.Mesh | null>(null);
+  const goalGroupRef = useRef<THREE.Group | null>(null);
   const rafRef = useRef<number>();
 
+  // state + mirror in ref so handlers always see latest without re-init
   const [attempts, setAttempts] = useState(0);
   const [goals, setGoals] = useState(0);
-  const [state, setState] = useState<GameState>("ready");
+  const [state, _setState] = useState<GameState>("ready");
+  const stateRef = useRef<GameState>("ready");
+  const setState = (s: GameState) => { stateRef.current = s; _setState(s); };
 
   useEffect(() => {
     const user = getUserData();
-    if (!user) {
-      setLocation("/");
-      return;
-    }
+    if (!user) { setLocation("/"); return; }
   }, [setLocation]);
 
   useEffect(() => {
@@ -47,16 +47,17 @@ export default function Game() {
       renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.domElement.style.display = "block";
+      renderer.domElement.style.cursor = "pointer";
       (renderer.domElement.style as any).touchAction = "manipulation";
       mount.appendChild(renderer.domElement);
 
-      // Lighting
+      // lights
       const hemi = new THREE.HemisphereLight(0xffffff, 0x335522, 0.9);
-      const dir = new THREE.DirectionalLight(0xffffff, 0.85);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.9);
       dir.position.set(6, 8, 4);
       scene.add(hemi, dir);
 
-      // Pitch
+      // pitch
       const grass = texLoader.load("/penalty3d/textures/grass_tile.png", (t) => {
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         t.repeat.set(8, 8);
@@ -69,7 +70,7 @@ export default function Game() {
       pitch.rotation.x = -Math.PI / 2;
       scene.add(pitch);
 
-      // Lines
+      // lines
       const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const addLine = (w: number, h: number, z: number, x = 0) => {
         const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lineMat);
@@ -84,60 +85,58 @@ export default function Game() {
       addLine(16, 0.06, -2);
       addLine(0.06, 30, 0);
 
-      // Goal
+      // goal + net
       const goalGroup = new THREE.Group();
       const postMat = new THREE.MeshStandardMaterial({ color: 0xf5f7fb, metalness: 0.1, roughness: 0.35 });
       const postL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.44, 16), postMat);
       postL.position.set(-3.66, 1.22, -6);
       const postR = postL.clone(); postR.position.x = 3.66;
       const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 7.32, 16), postMat);
-      bar.rotation.z = Math.PI/2; bar.position.set(0,2.44,-6);
+      bar.rotation.z = Math.PI / 2; bar.position.set(0, 2.44, -6);
       goalGroup.add(postL, postR, bar);
       const netTex = texLoader.load("/penalty3d/textures/net_alpha.png", (t)=>{ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1.5,1); });
       const netMat = new THREE.MeshBasicMaterial({ map: netTex, transparent: true, opacity: 0.92 });
       const net = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 2.4, 24, 8), netMat);
-      net.name = "goalNet"; net.position.set(0,1.2,-6.03);
+      net.name = "goalNet"; net.position.set(0, 1.2, -6.03);
       goalGroup.add(net);
       scene.add(goalGroup);
 
-      // Ball
-      const ballColor = texLoader.load("/penalty3d/textures/ball_color.png", t => (t.colorSpace = THREE.SRGBColorSpace));
-      const ballRough = texLoader.load("/penalty3d/textures/ball_roughness.png");
+      // ball with improved texture
+      const color = texLoader.load("/penalty3d/textures/ball_color.png", t => (t.colorSpace = THREE.SRGBColorSpace));
+      const rough = texLoader.load("/penalty3d/textures/ball_roughness.png");
       const ball = new THREE.Mesh(
-        new THREE.SphereGeometry(0.3, 64, 64),
+        new THREE.SphereGeometry(0.32, 64, 64),
         new THREE.MeshPhysicalMaterial({
-          map: ballColor,
-          roughnessMap: ballRough,
+          map: color,
+          roughnessMap: rough,
           roughness: 0.5,
           metalness: 0.0,
-          clearcoat: 0.6,
-          clearcoatRoughness: 0.25,
+          clearcoat: 0.8,
+          clearcoatRoughness: 0.22,
         })
       );
-      ball.position.set(0, 0.34, -1.0);
+      ball.position.set(0, 0.36, -1.0);
       scene.add(ball);
 
-      // Save refs
+      // refs
       rendererRef.current = renderer;
       sceneRef.current = scene;
       cameraRef.current = camera;
       ballRef.current = ball;
       goalGroupRef.current = goalGroup;
 
-      // Resize
+      // size
       const onResize = () => {
         const r = mount.getBoundingClientRect();
         const width = Math.floor(r.width);
         const height = Math.floor((9 / 16) * width);
         renderer.setSize(width, height, false);
-        const s = renderer.domElement.style;
-        s.width = "100%"; s.height = "100%";
         camera.aspect = width / height; camera.updateProjectionMatrix();
       };
       onResize();
       window.addEventListener("resize", onResize);
 
-      // Animate
+      // loop
       let t = 0;
       const loop = () => {
         t += 0.016;
@@ -147,10 +146,11 @@ export default function Game() {
       };
       loop();
 
-      // Tap-to-shoot (keeps behavior simple and reliable)
+      // TAP handler — only attach once, no state deps
       const canvas = renderer.domElement;
       const onTap = (e: MouseEvent | PointerEvent | TouchEvent) => {
-        if (state !== "ready") return;
+        e.preventDefault();
+        if (stateRef.current !== "ready") return;
         const r = canvas.getBoundingClientRect();
         let cx = 0, cy = 0;
         if (e instanceof TouchEvent && e.changedTouches?.[0]) {
@@ -160,13 +160,13 @@ export default function Game() {
         }
         const x = cx - r.left, y = cy - r.top;
         const dirX = THREE.MathUtils.clamp((x / r.width) * 2 - 1, -0.95, 0.95);
-        const heightFactor = THREE.MathUtils.clamp(1 - y / r.height, 0, 1);
-        const power = THREE.MathUtils.clamp(0.55 + heightFactor * 0.55, 0.55, 1.1);
+        const power = THREE.MathUtils.clamp(0.6 + (1 - y / r.height) * 0.6, 0.6, 1.2);
         shoot(power, dirX);
       };
-      canvas.addEventListener("pointerup", onTap as any, { passive: true });
-      canvas.addEventListener("click", onTap as any, { passive: true });
-      canvas.addEventListener("touchend", onTap as any, { passive: true });
+      canvas.addEventListener("pointerup", onTap as any, { passive: false });
+      canvas.addEventListener("click", onTap as any, { passive: false });
+      canvas.addEventListener("touchend", onTap as any, { passive: false });
+      canvas.addEventListener("touchstart", (e)=>e.preventDefault(), { passive: false });
 
       return () => {
         window.removeEventListener("resize", onResize);
@@ -180,7 +180,7 @@ export default function Game() {
     } catch (err) {
       console.error(err);
     }
-  }, [state]);
+  }, []); // init ONCE
 
   function pulseNet() {
     const goalGroup = goalGroupRef.current;
@@ -206,8 +206,8 @@ export default function Game() {
   }
 
   function shoot(power: number, dirX: number) {
-    const scene = sceneRef.current, ball = ballRef.current, goal = goalGroupRef.current, camera = cameraRef.current;
-    if (!scene || !ball || !goal || !camera || state !== "ready") return;
+    const ball = ballRef.current, goal = goalGroupRef.current, camera = cameraRef.current;
+    if (!ball || !goal || !camera || stateRef.current !== "ready") return;
 
     setState("shooting");
     setAttempts((a) => a + 1);
@@ -222,7 +222,7 @@ export default function Game() {
       THREE.MathUtils.lerp(start.z, end.z, 0.5)
     );
 
-    // tiny camera kick
+    // small cam kick
     const camStart = camera.position.clone();
     const camT0 = performance.now();
     const camDur = 120;
@@ -245,7 +245,7 @@ export default function Game() {
       const p3 = end.clone().multiplyScalar(k * k);
       const pos = new THREE.Vector3().add(p1).add(p2).add(p3);
       ball.position.copy(pos);
-      ball.rotation.x -= 0.4;
+      ball.rotation.x -= 0.42;
 
       if (k >= 1) {
         const gxNow = goal.position.x;
@@ -265,7 +265,7 @@ export default function Game() {
         } else {
           setState("miss");
           setTimeout(() => {
-            ball.position.set(0, 0.34, -1.0);
+            ball.position.set(0, 0.36, -1.0);
             setState("ready");
           }, 550);
         }
@@ -287,7 +287,6 @@ export default function Game() {
           Tap anywhere on the pitch to shoot. Score once to unlock your voucher.
         </p>
       </section>
-
       <section className="w-full flex flex-col items-center">
         <div
           ref={mountRef}
