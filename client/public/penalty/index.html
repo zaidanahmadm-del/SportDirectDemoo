@@ -10,7 +10,10 @@
       html,body{margin:0;padding:0;background:#247a3f;height:100%;width:100%;overflow:hidden}
       #canvas_container{width:100%;max-width:100%;margin:0 auto}
       #canvas{display:block;width:100%;height:auto;max-width:100%;margin:0 auto;outline:none;-webkit-tap-highlight-color:transparent}
-      #block_mobile,#block_landscape,#block_portrait,#rotate_landscape,#rotate_device,#orientation_msg{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+      /* kill any vendor rotate overlays if present */
+      #block_mobile,#block_landscape,#block_portrait,#rotate_landscape,#rotate_device,#orientation_msg{
+        display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important
+      }
     </style>
   </head>
   <body>
@@ -18,16 +21,27 @@
       <canvas id="canvas" width="960" height="540"></canvas>
     </div>
 
-    <!-- Vendor / engine (keep your original order if it differs) -->
-    <script src="js/createjs.min.js"></script>
-    <script src="js/howler.min.js"></script>
-    <script src="js/sprite_lib.js"></script>
-    <script src="js/settings.js"></script>
-    <script src="js/CLang.js"></script>
-    <script src="js/CPreloader.js"></script>
-    <script src="js/CMain.js"></script>
+    <!-- Load engines from CDN to avoid 404s -->
+    <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+
+    <!-- Your local game files (these MUST exist at /penalty/js/...) -->
+    <script src="/penalty/js/sprite_lib.js"></script>
+    <script src="/penalty/js/settings.js"></script>
+    <script src="/penalty/js/CPreloader.js"></script>
+    <script src="/penalty/js/CMain.js"></script>
+    <script src="/penalty/js/CGame.js"></script>
+
     <script>
+      // ensure no rotate gate + no sounds (faster load)
       window.ENABLE_CHECK_ORIENTATION = false;
+      window.DISABLE_SOUND_MOBILE = true;
+      window.ENABLE_SOUNDS = false;
+      window.SOUNDTRACK_VOLUME = 0;
+
+      // helpful logging
+      window.addEventListener('error', e => console.log('[Penalty] error:', e.message));
+      console.log('[Penalty] booted');
     </script>
   </body>
 </html>
