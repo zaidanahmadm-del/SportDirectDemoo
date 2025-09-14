@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import * as THREE from "three";
@@ -23,6 +24,9 @@ export default function Game() {
     renderer: THREE.WebGLRenderer;
     ball: THREE.Mesh;
     goalGroup: THREE.Group;
+    goalZ: number;
+    goalWidth: number;
+    goalHeight: number;
     animationId?: number;
   }>();
 
@@ -35,32 +39,33 @@ export default function Game() {
     }
   }, [setLocation]);
 
-  // Helpers
+  // --- Helpers ---
   const loadTexture = (path: string) =>
     new Promise<THREE.Texture | null>((resolve) => {
       new THREE.TextureLoader().load(path, (t) => resolve(t), undefined, () => resolve(null));
     });
 
-  const addRectLine = (scene: THREE.Scene, w: number, d: number, zBack: number, y = 0.002) => {
+  // Draw a rectangle whose back edge sits on the goal line (goalZ) and extends +d toward the camera
+  const addRectLine = (scene: THREE.Scene, w: number, d: number, goalZ: number, y = 0.002) => {
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const thick = 0.06;
+    const zBack = goalZ;
+    const zFront = goalZ + d;
 
-    // top & bottom
     const top = new THREE.Mesh(new THREE.PlaneGeometry(w, thick), mat);
     top.rotation.x = -Math.PI / 2;
     top.position.set(0, y, zBack);
     scene.add(top);
 
     const bottom = top.clone();
-    bottom.position.set(0, y, zBack + d);
+    bottom.position.set(0, y, zFront);
     scene.add(bottom);
 
-    // left & right
     const sideGeo = new THREE.PlaneGeometry(d, thick);
     const left = new THREE.Mesh(sideGeo, mat);
     left.rotation.x = -Math.PI / 2;
     left.rotation.z = Math.PI / 2;
-    left.position.set(-w / 2, y, zBack + d / 2);
+    left.position.set(-w / 2, y, (zBack + zFront) / 2);
     scene.add(left);
 
     const right = left.clone();
@@ -68,19 +73,28 @@ export default function Game() {
     scene.add(right);
   };
 
-  const addCircleLine = (scene: THREE.Scene, r: number, cx: number, cz: number, y = 0.002, segments = 64) => {
+  // Arc utility (for the penalty arc)
+  const addArc = (
+    scene: THREE.Scene,
+    r: number,
+    cx: number,
+    cz: number,
+    start: number,
+    end: number,
+    y = 0.002,
+    segments = 64
+  ) => {
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const thick = 0.06;
     for (let i = 0; i < segments; i++) {
-      const a1 = (i / segments) * Math.PI * 2;
-      const a2 = ((i + 1) / segments) * Math.PI * 2;
+      const a1 = start + (i / segments) * (end - start);
+      const a2 = start + ((i + 1) / segments) * (end - start);
       const x1 = cx + r * Math.cos(a1);
       const z1 = cz + r * Math.sin(a1);
       const x2 = cx + r * Math.cos(a2);
       const z2 = cz + r * Math.sin(a2);
       const segLen = Math.hypot(x2 - x1, z2 - z1);
-      const geo = new THREE.PlaneGeometry(segLen, thick);
-      const seg = new THREE.Mesh(geo, mat);
+      const seg = new THREE.Mesh(new THREE.PlaneGeometry(segLen, thick), mat);
       seg.rotation.x = -Math.PI / 2;
       seg.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
       seg.rotation.z = Math.atan2(z2 - z1, x2 - x1);
@@ -88,7 +102,7 @@ export default function Game() {
     }
   };
 
-  // Init Three.js
+  // --- Init Three.js ---
   useEffect(() => {
     if (!canvasRef.current) return;
     let disposed = false;
@@ -99,19 +113,17 @@ export default function Game() {
 
         // Scene / camera / renderer
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
 
         const camera = new THREE.PerspectiveCamera(55, canvas.width / canvas.height, 0.1, 1000);
-        camera.position.set(0, 2.6, 5.2);
-        camera.lookAt(0, 1.2, -8);
+        camera.position.set(0, 2.8, 6.0);
 
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(canvas.width, canvas.height);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-        // Lights
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x3a5a3a, 0.6));
+        // Lighting
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x3a5a3a, 0.7));
         const sun = new THREE.DirectionalLight(0xffffff, 1.0);
         sun.position.set(6, 10, 6);
         sun.castShadow = true;
@@ -124,12 +136,28 @@ export default function Game() {
         sun.shadow.camera.bottom = -15;
         scene.add(sun);
 
-        // Textures (optional)
-        const [grassTex, ballTex, netTex] = await Promise.all([
+        // Textures
+        const [grassTex, ballTex, netTex, crowdTex, adsTex, skyTex] = await Promise.all([
           loadTexture("/textures/grass.jpg"),
           loadTexture("/textures/ball.png"),
           loadTexture("/textures/net.png"),
+          loadTexture("/textures/crowd.jpg"),
+          loadTexture("/textures/ads.jpg"),
+          loadTexture("/textures/sky.jpg"),
         ]);
+
+        // Sky dome
+        if (skyTex) {
+          const sky = new THREE.Mesh(
+            new THREE.SphereGeometry(200, 32, 32),
+            new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide })
+          );
+          sky.rotation.y = Math.PI;
+          scene.add(sky);
+        } else {
+          scene.background = new THREE.Color(0x87ceeb);
+        }
+
         if (grassTex) {
           grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
           grassTex.repeat.set(24, 24);
@@ -141,7 +169,7 @@ export default function Game() {
           netTex.wrapS = netTex.wrapT = THREE.ClampToEdgeWrapping;
         }
 
-        // Pitch (bigger, textured)
+        // Pitch
         const ground = new THREE.Mesh(
           new THREE.PlaneGeometry(60, 60),
           grassTex
@@ -152,22 +180,43 @@ export default function Game() {
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Pitch markings near the goal we shoot at
-        // Real-ish dims (meters): goal at z=-8, penalty area extends 16.5m, width ~40.3m
-        addRectLine(scene, 16, 6, -14);         // goal box (~5.5m depth -> scaled ~6)
-        addRectLine(scene, 28, 10, -18);        // penalty box (~16.5m depth -> scaled ~10)
-        // Penalty spot (~11m): place a small white dot
-        {
-          const spot = new THREE.Mesh(
-            new THREE.CircleGeometry(0.12, 32),
-            new THREE.MeshBasicMaterial({ color: 0xffffff })
-          );
-          spot.rotation.x = -Math.PI / 2;
-          spot.position.set(0, 0.003, -18); // between boxes
-          scene.add(spot);
+        // Stadium ads (front)
+        const goalZ = -8;
+        if (adsTex) {
+          const adMat = new THREE.MeshBasicMaterial({ map: adsTex });
+          const ad = new THREE.Mesh(new THREE.PlaneGeometry(18, 1), adMat);
+          ad.position.set(0, 0.55, goalZ + 5);
+          scene.add(ad);
         }
-        // Penalty arc (outside area)
-        addCircleLine(scene, 3.5, 0, -18 + 3.5, 0.002);
+
+        // Curved stands behind the goal
+        if (crowdTex) {
+          const crowdMat = new THREE.MeshBasicMaterial({ map: crowdTex });
+          const radius = 28;
+          const start = -Math.PI * 0.35;
+          const end = Math.PI * 0.35;
+          const steps = 20;
+          for (let i = 0; i <= steps; i++) {
+            const a = start + (i / steps) * (end - start);
+            const x = Math.sin(a) * radius;
+            const z = Math.cos(a) * radius + goalZ - 6;
+            const panel = new THREE.Mesh(new THREE.PlaneGeometry(10, 6), crowdMat);
+            panel.position.set(x, 3.5, z);
+            panel.lookAt(0, 3.5, goalZ);
+            scene.add(panel);
+          }
+        }
+
+        // Pitch markings (in front of goal line)
+        addRectLine(scene, 16, 6, goalZ);   // goal box
+        addRectLine(scene, 28, 10, goalZ);  // penalty box
+        // Penalty spot
+        const spot = new THREE.Mesh(new THREE.CircleGeometry(0.12, 32), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        spot.rotation.x = -Math.PI / 2;
+        spot.position.set(0, 0.003, goalZ + 11);
+        scene.add(spot);
+        // Penalty arc (facing the camera)
+        addArc(scene, 3.5, 0, goalZ + 11, -Math.PI * 0.2, Math.PI * 1.2);
 
         // Goal frame with depth + nets
         const goalGroup = new THREE.Group();
@@ -186,26 +235,26 @@ export default function Game() {
 
         const postGeo = new THREE.CylinderGeometry(postR, postR, goalHeight, 24);
         const leftPost = new THREE.Mesh(postGeo, postMat);
-        leftPost.position.set(-goalWidth / 2, goalHeight / 2, -8);
+        leftPost.position.set(-goalWidth / 2, goalHeight / 2, goalZ);
         leftPost.castShadow = true;
         goalGroup.add(leftPost);
 
         const rightPost = new THREE.Mesh(postGeo, postMat);
-        rightPost.position.set(goalWidth / 2, goalHeight / 2, -8);
+        rightPost.position.set(goalWidth / 2, goalHeight / 2, goalZ);
         rightPost.castShadow = true;
         goalGroup.add(rightPost);
 
         const crossGeo = new THREE.CylinderGeometry(postR, postR, goalWidth, 24);
         const crossbar = new THREE.Mesh(crossGeo, postMat);
         crossbar.rotation.z = Math.PI / 2;
-        crossbar.position.set(0, goalHeight, -8);
+        crossbar.position.set(0, goalHeight, goalZ);
         crossbar.castShadow = true;
         goalGroup.add(crossbar);
 
         // Backbar (depth)
         const backbar = new THREE.Mesh(crossGeo, postMat);
         backbar.rotation.z = Math.PI / 2;
-        backbar.position.set(0, goalHeight, -8 - goalDepth);
+        backbar.position.set(0, goalHeight, goalZ - goalDepth);
         backbar.castShadow = true;
         goalGroup.add(backbar);
 
@@ -213,7 +262,7 @@ export default function Game() {
         const depthGeo = new THREE.CylinderGeometry(postR, postR, goalDepth, 24);
         const leftDepth = new THREE.Mesh(depthGeo, postMat);
         leftDepth.rotation.x = Math.PI / 2;
-        leftDepth.position.set(-goalWidth / 2, goalHeight, -8 - goalDepth / 2);
+        leftDepth.position.set(-goalWidth / 2, goalHeight, goalZ - goalDepth / 2);
         leftDepth.castShadow = true;
         goalGroup.add(leftDepth);
 
@@ -233,13 +282,13 @@ export default function Game() {
           });
 
           const backNet = new THREE.Mesh(new THREE.PlaneGeometry(goalWidth, goalHeight), netMat);
-          backNet.position.set(0, goalHeight / 2, -8 - goalDepth - 0.02);
+          backNet.position.set(0, goalHeight / 2, goalZ - goalDepth - 0.02);
           goalGroup.add(backNet);
 
           const sideNetGeo = new THREE.PlaneGeometry(goalDepth, goalHeight);
           const leftNet = new THREE.Mesh(sideNetGeo, netMat);
           leftNet.rotation.y = Math.PI / 2;
-          leftNet.position.set(-goalWidth / 2 - 0.02, goalHeight / 2, -8 - goalDepth / 2);
+          leftNet.position.set(-goalWidth / 2 - 0.02, goalHeight / 2, goalZ - goalDepth / 2);
           goalGroup.add(leftNet);
 
           const rightNet = leftNet.clone();
@@ -256,7 +305,7 @@ export default function Game() {
             ? new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45 })
             : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45 })
         );
-        ball.position.set(0, 0.28, -2.2); // clearly visible
+        ball.position.set(0, 0.28, goalZ + 6);
         ball.castShadow = true;
         scene.add(ball);
 
@@ -271,27 +320,25 @@ export default function Game() {
         scene.add(ballShadow);
 
         // Store refs
-        sceneRef.current = { scene, camera, renderer, ball, goalGroup };
+        sceneRef.current = { scene, camera, renderer, ball, goalGroup, goalZ, goalWidth, goalHeight };
 
-        // Goal animation (side-to-side)
+        // Animate camera look at, and goal side-to-side
+        camera.lookAt(0, 1.2, goalZ);
         let dir = 1;
-        const animateGoal = () => {
+        const animate = () => {
           if (!sceneRef.current || disposed) return;
-          goalGroup.position.x += dir * 0.02;
-          if (goalGroup.position.x > 2 || goalGroup.position.x < -2) dir *= -1;
+          sceneRef.current.goalGroup.position.x += dir * 0.02;
+          if (sceneRef.current.goalGroup.position.x > 2 || sceneRef.current.goalGroup.position.x < -2) dir *= -1;
 
           ballShadow.position.set(sceneRef.current.ball.position.x, 0.001, sceneRef.current.ball.position.z);
-
-          renderer.render(scene, camera);
-          sceneRef.current.animationId = requestAnimationFrame(animateGoal);
+          sceneRef.current.renderer.render(scene, camera);
+          sceneRef.current.animationId = requestAnimationFrame(animate);
         };
-        animateGoal();
+        animate();
       } catch (err) {
         console.error("WebGL init failed:", err);
         if (!disposed) {
-          setWebglError(
-            "Your device does not support WebGL, which is required for the 3D game. Please try a different browser or device."
-          );
+          setWebglError("Your device does not support WebGL, which is required for the 3D game. Please try a different browser or device.");
         }
       }
     })();
@@ -303,20 +350,20 @@ export default function Game() {
     };
   }, []);
 
-  // Shooting
+  // --- Shooting ---
   const shootBall = (clickX: number, clickY: number) => {
     if (!sceneRef.current || gameState !== "ready") return;
 
     setGameState("shooting");
     setAttempts((p) => p + 1);
 
-    const { ball } = sceneRef.current;
+    const { ball, goalGroup, goalZ, goalWidth, goalHeight } = sceneRef.current;
     const canvas = canvasRef.current!;
     const spreadX = (clickX / canvas.width - 0.5) * 0.5 + (Math.random() - 0.5) * 0.2;
     const spreadY = (0.5 - clickY / canvas.height) * 0.3 + Math.random() * 0.15;
 
     const startPos = ball.position.clone();
-    const targetPos = new THREE.Vector3(spreadX * 8, 1 + spreadY * 2, -8); // towards goal
+    const targetPos = new THREE.Vector3(spreadX * 8 + goalGroup.position.x, 1 + spreadY * 2, goalZ);
 
     const duration = 1000;
     const start = Date.now();
@@ -329,12 +376,13 @@ export default function Game() {
       ball.position.y = startPos.y + Math.sin(t * Math.PI) * 2;
 
       if (t >= 1) {
+        const localX = ball.position.x - goalGroup.position.x;
         const inGoal =
-          ball.position.x > -3.66 &&
-          ball.position.x < 3.66 &&
+          localX > -goalWidth / 2 &&
+          localX < goalWidth / 2 &&
           ball.position.y > 0 &&
-          ball.position.y < 2.44 &&
-          ball.position.z <= -8.0;
+          ball.position.y < goalHeight &&
+          ball.position.z <= goalZ + 0.02;
 
         if (inGoal) {
           setGoals((p) => p + 1);
@@ -358,7 +406,8 @@ export default function Game() {
 
   const resetBall = () => {
     if (!sceneRef.current) return;
-    sceneRef.current.ball.position.set(0, 0.28, -2.2);
+    const { ball, goalZ } = sceneRef.current;
+    ball.position.set(0, 0.28, goalZ + 6);
   };
 
   const handleGoalScored = () => {
