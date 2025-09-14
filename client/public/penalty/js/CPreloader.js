@@ -1,97 +1,33 @@
-function CPreloader() {
-    var _iMaskWidth;
-    var _iMaskHeight;
-    var _oLoadingText;
-    var _oProgressBar;
-    var _oMaskPreloader;
-    var _oFade;
-    var _oIcon;
-    var _oIconMask;
-    var _oContainer;
+function CPreloader(){
+    var _oText = null;
+    var _iTotResources = 0;
+    var _iCurResources = 0;
 
-    this._init = function () {
-        s_oSpriteLibrary.init(this._onImagesLoaded, this._onAllImagesLoaded, this);
-        s_oSpriteLibrary.addSprite("progress_bar", "./sprites/progress_bar.png");
-        
-        s_oSpriteLibrary.loadSprites();
+    this._init = function(){
+        _iTotResources = s_oSpriteLibrary.getNumSprites ? s_oSpriteLibrary.getNumSprites() : 1;
+        _oText = new createjs.Text("0%","24px Arial","#fff");
+        _oText.textAlign = "center";
+        _oText.x = CANVAS_WIDTH/2;
+        _oText.y = CANVAS_HEIGHT/2;
+        s_oStage.addChild(_oText);
 
-        _oContainer = new createjs.Container();
-        s_oStage.addChild(_oContainer);
-        
+        s_oSpriteLibrary.setLoadedCallback ? s_oSpriteLibrary.setLoadedCallback( this.resourceLoaded ) : null;
+        if (s_oMain && s_oMain.preloaderReady) s_oMain.preloaderReady();
     };
 
-    this.unload = function () {
-        _oContainer.removeAllChildren();
+    this.resourceLoaded = function(){
+        _iCurResources++;
+        var perc = Math.min(100, Math.floor((_iCurResources/_iTotResources)*100));
+        _oText.text = perc + "%";
+        s_oStage.update();
 
+        if(_iCurResources === _iTotResources){
+            setTimeout(function(){ s_oMain._onRemovePreloader(); }, 0);
+        }
     };
 
-    this._onImagesLoaded = function () {
-
-    };
-
-    this._onAllImagesLoaded = function () {
-        
-        this.attachSprites();
-
-        s_oMain.preloaderReady();
-        
-    };
-
-    this.attachSprites = function () {
-        
-        var oBg = new createjs.Shape();
-        oBg.graphics.beginFill("black").drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        _oContainer.addChild(oBg);
-
-        
-        var oSprite = s_oSpriteLibrary.getSprite('progress_bar');
-        _oProgressBar = createBitmap(oSprite);
-        _oProgressBar.x = CANVAS_WIDTH/2 - (oSprite.width / 2);
-        _oProgressBar.y = CANVAS_HEIGHT/2 + 50;
-        _oContainer.addChild(_oProgressBar);
-
-        _iMaskWidth = oSprite.width;
-        _iMaskHeight = oSprite.height;
-        _oMaskPreloader = new createjs.Shape();
-        _oMaskPreloader.graphics.beginFill("rgba(0,0,0,0.01)").drawRect(_oProgressBar.x, _oProgressBar.y, 1, _iMaskHeight);
-
-        _oContainer.addChild(_oMaskPreloader);
-
-        _oProgressBar.mask = _oMaskPreloader;
-
-        _oLoadingText = new createjs.Text("", "40px " + FONT_GAME, "#fff");
-        _oLoadingText.x = CANVAS_WIDTH/2;
-        _oLoadingText.y = CANVAS_HEIGHT/2 + 110;
-        _oLoadingText.textBaseline = "alphabetic";
-        _oLoadingText.textAlign = "center";
-        _oContainer.addChild(_oLoadingText);
-
-        
-        _oFade = new createjs.Shape();
-        _oFade.graphics.beginFill("black").drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        _oContainer.addChild(_oFade);
-        
-        createjs.Tween.get(_oFade).to({alpha: 0}, 500).call(function () {            
-            createjs.Tween.removeTweens(_oFade);
-            _oContainer.removeChild(_oFade);
-        });        
-        
-        
-    };
-
-
-    this.refreshLoader = function (iPerc) {
-        _oLoadingText.text = iPerc + "%";
-        
-        if (iPerc === 100) {
-            s_oMain._onRemovePreloader();
-            _oLoadingText.visible = false;
-            _oProgressBar.visible = false;
-        };     
-
-        _oMaskPreloader.graphics.clear();
-        var iNewMaskWidth = Math.floor((iPerc * _iMaskWidth) / 100);
-        _oMaskPreloader.graphics.beginFill("rgba(0,0,0,0.01)").drawRect(_oProgressBar.x, _oProgressBar.y, iNewMaskWidth, _iMaskHeight);
+    this.unload = function(){
+        s_oStage.removeChild(_oText);
     };
 
     this._init();
