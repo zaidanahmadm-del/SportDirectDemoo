@@ -268,18 +268,17 @@ export default function Game() {
 
   return (
     <main className="main-content premium-container pt-12 pb-12 fade-in flex flex-col items-center">
-      {/* Header Section */}
+      {/* Header Section 
       <section className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-heading font-black text-sd-blue mb-2">
           PENALTY SHOOTOUT
           <div className="h-1 w-24 bg-sd-red mx-auto mt-2 rounded-full"></div>
         </h1>
-        {/* removed message */}
-        {/* <p className="text-lg text-sd-black/70 mb-8 font-medium">
-          Tap anywhere to shoot! Keep trying until you score.
-        </p> */}
+        {/* removed message 
+        {/*
+
         
-        {/* Game Stats */}
+        {/* Game Stats 
         <div className="flex justify-center space-x-6 mb-6">
           <div className="premium-card px-6 py-4 text-center">
             <div className="text-3xl font-heading font-black text-sd-blue" data-testid="text-attempts">
@@ -296,7 +295,7 @@ export default function Game() {
         </div>
       </section>
 
-      {/* 3D Game Canvas */}
+      {/* 3D Game Canvas 
       <section className="mb-8 w-full flex justify-center">
         <div className="premium-card p-6 relative bounce-in mx-auto">
           {webglError ? (
@@ -308,7 +307,7 @@ export default function Game() {
               <div className="bg-sd-gray p-6 rounded-lg mb-6">
                 <p className="text-sm text-sd-black/70 font-medium">
                   Don't worry! You can still win your voucher by registering.
-                </p> */}
+                </p> 
               </div>
               <Button 
                 onClick={() => {
@@ -333,23 +332,7 @@ export default function Game() {
             />
           )}
           
-          {/* Game Controls Overlay */}
-          {gameState === 'ready' && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
-                <p className="font-bold uppercase tracking-wide">TAP TO SHOOT!</p>
-              </div>
-            </div>
-          )}
           
-          {gameState === 'shooting' && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-sd-black/80 text-white px-6 py-3 rounded-lg text-center shadow-lg">
-                <p className="font-bold uppercase tracking-wide">⚽ SHOOTING...</p>
-              </div>
-            </div>
-          )}
-        </div>
         
         {/* Game Controls */}
         <div className="flex justify-center space-x-4 mt-6">
@@ -370,7 +353,7 @@ export default function Game() {
         </div>
       </section>
 
-      {/* Back to Registration */}
+      {/* Back to Registration 
       <div className="text-center pt-6 border-t border-sd-light-border mt-8">
         <Button 
           onClick={() => setLocation("/")}
@@ -382,12 +365,12 @@ export default function Game() {
         </Button>
       </div>
 
-      {/* Goal Celebration Overlay */}
+      {/* Goal Celebration Overlay 
       {showGoalOverlay && (
         <div className="fixed inset-0 bg-sd-black/90 flex items-center justify-center z-50 fade-in">
           <Card className="max-w-sm mx-4 relative overflow-hidden premium-card bounce-in">
             <CardContent className="pt-8 pb-8 text-center">
-              {/* Confetti animation */}
+              {/* Confetti animation 
               <div className="absolute inset-0 pointer-events-none">
                 {[...Array(30)].map((_, i) => (
                   <div
