@@ -10,6 +10,8 @@ export default function Header() {
     window.addEventListener("resize", setPad);
     return () => window.removeEventListener("resize", setPad);
   }, []);
+
+
   return (
     <header ref={headerRef} className="fixed top-0 left-0 right-0 bg-white shadow-sm border-b border-sd-light-border z-50">
       <div className="premium-container py-4 flex justify-center items-center">
