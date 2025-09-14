@@ -1,1 +1,5 @@
-Place ball.png, grass.jpg, net.png here. Paths: /textures/ball.png etc.
+Place textures here: ball.png, grass.jpg, net.png
+Used paths:
+  /textures/ball.png
+  /textures/grass.jpg
+  /textures/net.png
