@@ -35,12 +35,58 @@ export default function Game() {
     }
   }, [setLocation]);
 
-  // Texture helper with graceful fallback
+  // Helpers
   const loadTexture = (path: string) =>
     new Promise<THREE.Texture | null>((resolve) => {
-      const loader = new THREE.TextureLoader();
-      loader.load(path, (tex) => resolve(tex), undefined, () => resolve(null));
+      new THREE.TextureLoader().load(path, (t) => resolve(t), undefined, () => resolve(null));
     });
+
+  const addRectLine = (scene: THREE.Scene, w: number, d: number, zBack: number, y = 0.002) => {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const thick = 0.06;
+
+    // top & bottom
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(w, thick), mat);
+    top.rotation.x = -Math.PI / 2;
+    top.position.set(0, y, zBack);
+    scene.add(top);
+
+    const bottom = top.clone();
+    bottom.position.set(0, y, zBack + d);
+    scene.add(bottom);
+
+    // left & right
+    const sideGeo = new THREE.PlaneGeometry(d, thick);
+    const left = new THREE.Mesh(sideGeo, mat);
+    left.rotation.x = -Math.PI / 2;
+    left.rotation.z = Math.PI / 2;
+    left.position.set(-w / 2, y, zBack + d / 2);
+    scene.add(left);
+
+    const right = left.clone();
+    right.position.x = w / 2;
+    scene.add(right);
+  };
+
+  const addCircleLine = (scene: THREE.Scene, r: number, cx: number, cz: number, y = 0.002, segments = 64) => {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const thick = 0.06;
+    for (let i = 0; i < segments; i++) {
+      const a1 = (i / segments) * Math.PI * 2;
+      const a2 = ((i + 1) / segments) * Math.PI * 2;
+      const x1 = cx + r * Math.cos(a1);
+      const z1 = cz + r * Math.sin(a1);
+      const x2 = cx + r * Math.cos(a2);
+      const z2 = cz + r * Math.sin(a2);
+      const segLen = Math.hypot(x2 - x1, z2 - z1);
+      const geo = new THREE.PlaneGeometry(segLen, thick);
+      const seg = new THREE.Mesh(geo, mat);
+      seg.rotation.x = -Math.PI / 2;
+      seg.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
+      seg.rotation.z = Math.atan2(z2 - z1, x2 - x1);
+      scene.add(seg);
+    }
+  };
 
   // Init Three.js
   useEffect(() => {
@@ -51,13 +97,13 @@ export default function Game() {
       try {
         const canvas = canvasRef.current;
 
-        // Renderer / Scene / Camera
+        // Scene / camera / renderer
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // sky blue
+        scene.background = new THREE.Color(0x87ceeb);
 
-        const camera = new THREE.PerspectiveCamera(60, canvas.width / canvas.height, 0.1, 1000);
-        camera.position.set(0, 3.2, 8.5);
-        camera.lookAt(0, 1.2, -6);
+        const camera = new THREE.PerspectiveCamera(55, canvas.width / canvas.height, 0.1, 1000);
+        camera.position.set(0, 2.6, 5.2);
+        camera.lookAt(0, 1.2, -8);
 
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(canvas.width, canvas.height);
@@ -65,20 +111,18 @@ export default function Game() {
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         // Lights
-        const hemi = new THREE.HemisphereLight(0xffffff, 0x446655, 0.6);
-        scene.add(hemi);
-
-        const dir = new THREE.DirectionalLight(0xffffff, 1.0);
-        dir.position.set(5, 10, 5);
-        dir.castShadow = true;
-        dir.shadow.mapSize.set(1024, 1024);
-        dir.shadow.camera.near = 1;
-        dir.shadow.camera.far = 30;
-        dir.shadow.camera.left = -12;
-        dir.shadow.camera.right = 12;
-        dir.shadow.camera.top = 12;
-        dir.shadow.camera.bottom = -12;
-        scene.add(dir);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x3a5a3a, 0.6));
+        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+        sun.position.set(6, 10, 6);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(1024, 1024);
+        sun.shadow.camera.near = 1;
+        sun.shadow.camera.far = 40;
+        sun.shadow.camera.left = -15;
+        sun.shadow.camera.right = 15;
+        sun.shadow.camera.top = 15;
+        sun.shadow.camera.bottom = -15;
+        scene.add(sun);
 
         // Textures (optional)
         const [grassTex, ballTex, netTex] = await Promise.all([
@@ -86,23 +130,20 @@ export default function Game() {
           loadTexture("/textures/ball.png"),
           loadTexture("/textures/net.png"),
         ]);
-
         if (grassTex) {
           grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
-          grassTex.repeat.set(20, 20);
+          grassTex.repeat.set(24, 24);
           grassTex.anisotropy = 4;
         }
-        if (ballTex) {
-          ballTex.anisotropy = 4;
-        }
+        if (ballTex) ballTex.anisotropy = 4;
         if (netTex) {
-          netTex.wrapS = netTex.wrapT = THREE.ClampToEdgeWrapping;
           netTex.anisotropy = 4;
+          netTex.wrapS = netTex.wrapT = THREE.ClampToEdgeWrapping;
         }
 
-        // Ground (grass)
+        // Pitch (bigger, textured)
         const ground = new THREE.Mesh(
-          new THREE.PlaneGeometry(40, 40),
+          new THREE.PlaneGeometry(60, 60),
           grassTex
             ? new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1, metalness: 0 })
             : new THREE.MeshStandardMaterial({ color: 0x2aa12a, roughness: 1 })
@@ -111,46 +152,76 @@ export default function Game() {
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Goal frame (cylinders) & net
-        const goalGroup = new THREE.Group();
+        // Pitch markings near the goal we shoot at
+        // Real-ish dims (meters): goal at z=-8, penalty area extends 16.5m, width ~40.3m
+        addRectLine(scene, 16, 6, -14);         // goal box (~5.5m depth -> scaled ~6)
+        addRectLine(scene, 28, 10, -18);        // penalty box (~16.5m depth -> scaled ~10)
+        // Penalty spot (~11m): place a small white dot
+        {
+          const spot = new THREE.Mesh(
+            new THREE.CircleGeometry(0.12, 32),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+          );
+          spot.rotation.x = -Math.PI / 2;
+          spot.position.set(0, 0.003, -18); // between boxes
+          scene.add(spot);
+        }
+        // Penalty arc (outside area)
+        addCircleLine(scene, 3.5, 0, -18 + 3.5, 0.002);
 
-        const goalWidth = 7.32;  // ~ real width
-        const goalHeight = 2.44; // ~ real height
-        const postRadius = 0.06;
+        // Goal frame with depth + nets
+        const goalGroup = new THREE.Group();
+        const goalWidth = 7.32;
+        const goalHeight = 2.44;
+        const goalDepth = 1.5;
+        const postR = 0.08;
 
         const postMat = new THREE.MeshPhysicalMaterial({
           color: 0xffffff,
-          roughness: 0.2,
+          roughness: 0.25,
           metalness: 0.0,
-          clearcoat: 0.6,
+          clearcoat: 0.7,
           clearcoatRoughness: 0.2,
         });
 
-        // Left post
-        const postGeo = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 24);
+        const postGeo = new THREE.CylinderGeometry(postR, postR, goalHeight, 24);
         const leftPost = new THREE.Mesh(postGeo, postMat);
         leftPost.position.set(-goalWidth / 2, goalHeight / 2, -8);
         leftPost.castShadow = true;
-        leftPost.receiveShadow = true;
         goalGroup.add(leftPost);
 
-        // Right post
         const rightPost = new THREE.Mesh(postGeo, postMat);
         rightPost.position.set(goalWidth / 2, goalHeight / 2, -8);
         rightPost.castShadow = true;
-        rightPost.receiveShadow = true;
         goalGroup.add(rightPost);
 
-        // Crossbar
-        const crossGeo = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 24);
+        const crossGeo = new THREE.CylinderGeometry(postR, postR, goalWidth, 24);
         const crossbar = new THREE.Mesh(crossGeo, postMat);
         crossbar.rotation.z = Math.PI / 2;
         crossbar.position.set(0, goalHeight, -8);
         crossbar.castShadow = true;
-        crossbar.receiveShadow = true;
         goalGroup.add(crossbar);
 
-        // Back net
+        // Backbar (depth)
+        const backbar = new THREE.Mesh(crossGeo, postMat);
+        backbar.rotation.z = Math.PI / 2;
+        backbar.position.set(0, goalHeight, -8 - goalDepth);
+        backbar.castShadow = true;
+        goalGroup.add(backbar);
+
+        // Side depth bars
+        const depthGeo = new THREE.CylinderGeometry(postR, postR, goalDepth, 24);
+        const leftDepth = new THREE.Mesh(depthGeo, postMat);
+        leftDepth.rotation.x = Math.PI / 2;
+        leftDepth.position.set(-goalWidth / 2, goalHeight, -8 - goalDepth / 2);
+        leftDepth.castShadow = true;
+        goalGroup.add(leftDepth);
+
+        const rightDepth = leftDepth.clone();
+        rightDepth.position.x = goalWidth / 2;
+        goalGroup.add(rightDepth);
+
+        // Nets: back + sides
         if (netTex) {
           const netMat = new THREE.MeshBasicMaterial({
             map: netTex,
@@ -158,50 +229,63 @@ export default function Game() {
             transparent: true,
             depthWrite: false,
             side: THREE.DoubleSide,
+            color: 0xffffff,
           });
-          const net = new THREE.Mesh(new THREE.PlaneGeometry(goalWidth + 0.2, goalHeight + 0.2), netMat);
-          net.position.set(0, goalHeight / 2, -8.1);
-          goalGroup.add(net);
+
+          const backNet = new THREE.Mesh(new THREE.PlaneGeometry(goalWidth, goalHeight), netMat);
+          backNet.position.set(0, goalHeight / 2, -8 - goalDepth - 0.02);
+          goalGroup.add(backNet);
+
+          const sideNetGeo = new THREE.PlaneGeometry(goalDepth, goalHeight);
+          const leftNet = new THREE.Mesh(sideNetGeo, netMat);
+          leftNet.rotation.y = Math.PI / 2;
+          leftNet.position.set(-goalWidth / 2 - 0.02, goalHeight / 2, -8 - goalDepth / 2);
+          goalGroup.add(leftNet);
+
+          const rightNet = leftNet.clone();
+          rightNet.position.x = goalWidth / 2 + 0.02;
+          goalGroup.add(rightNet);
         }
 
         scene.add(goalGroup);
 
-        // Ball (textured)
+        // Ball (bigger & closer)
         const ball = new THREE.Mesh(
-          new THREE.SphereGeometry(0.22, 32, 32),
+          new THREE.SphereGeometry(0.28, 32, 32),
           ballTex
-            ? new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45, metalness: 0 })
+            ? new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45 })
             : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45 })
         );
-        ball.position.set(0, 0.22, 5);
+        ball.position.set(0, 0.28, -2.2); // clearly visible
         ball.castShadow = true;
         scene.add(ball);
 
-        // Fake soft shadow under ball
+        // Soft contact shadow under ball
         const ballShadow = new THREE.Mesh(
-          new THREE.CircleGeometry(0.28, 32),
-          new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true })
+          new THREE.CircleGeometry(0.35, 32),
+          new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.22, transparent: true })
         );
         ballShadow.rotation.x = -Math.PI / 2;
-        ballShadow.position.set(0, 0.001, 5);
+        ballShadow.position.set(ball.position.x, 0.001, ball.position.z);
         ballShadow.renderOrder = 1;
         scene.add(ballShadow);
 
         // Store refs
         sceneRef.current = { scene, camera, renderer, ball, goalGroup };
 
-        // Start goal animation
-        startGoalAnimation();
-
-        // Render loop
-        const animate = () => {
+        // Goal animation (side-to-side)
+        let dir = 1;
+        const animateGoal = () => {
           if (!sceneRef.current || disposed) return;
-          ballShadow.position.x = sceneRef.current.ball.position.x;
-          ballShadow.position.z = sceneRef.current.ball.position.z;
-          sceneRef.current.renderer.render(scene, camera);
-          sceneRef.current.animationId = requestAnimationFrame(animate);
+          goalGroup.position.x += dir * 0.02;
+          if (goalGroup.position.x > 2 || goalGroup.position.x < -2) dir *= -1;
+
+          ballShadow.position.set(sceneRef.current.ball.position.x, 0.001, sceneRef.current.ball.position.z);
+
+          renderer.render(scene, camera);
+          sceneRef.current.animationId = requestAnimationFrame(animateGoal);
         };
-        animate();
+        animateGoal();
       } catch (err) {
         console.error("WebGL init failed:", err);
         if (!disposed) {
@@ -219,22 +303,7 @@ export default function Game() {
     };
   }, []);
 
-  const startGoalAnimation = () => {
-    if (!sceneRef.current) return;
-    const { goalGroup } = sceneRef.current;
-    let dir = 1;
-    const speed = 0.02;
-    const maxX = 2;
-
-    const tick = () => {
-      if (!sceneRef.current) return;
-      goalGroup.position.x += dir * speed;
-      if (goalGroup.position.x > maxX || goalGroup.position.x < -maxX) dir *= -1;
-      requestAnimationFrame(tick);
-    };
-    tick();
-  };
-
+  // Shooting
   const shootBall = (clickX: number, clickY: number) => {
     if (!sceneRef.current || gameState !== "ready") return;
 
@@ -244,10 +313,10 @@ export default function Game() {
     const { ball } = sceneRef.current;
     const canvas = canvasRef.current!;
     const spreadX = (clickX / canvas.width - 0.5) * 0.5 + (Math.random() - 0.5) * 0.2;
-    const spreadY = (0.5 - clickY / canvas.height) * 0.3 + Math.random() * 0.2;
+    const spreadY = (0.5 - clickY / canvas.height) * 0.3 + Math.random() * 0.15;
 
     const startPos = ball.position.clone();
-    const targetPos = new THREE.Vector3(spreadX * 8, 1 + spreadY * 2, -8);
+    const targetPos = new THREE.Vector3(spreadX * 8, 1 + spreadY * 2, -8); // towards goal
 
     const duration = 1000;
     const start = Date.now();
@@ -261,11 +330,11 @@ export default function Game() {
 
       if (t >= 1) {
         const inGoal =
-          ball.position.x > -3.6 &&
-          ball.position.x < 3.6 &&
+          ball.position.x > -3.66 &&
+          ball.position.x < 3.66 &&
           ball.position.y > 0 &&
           ball.position.y < 2.44 &&
-          ball.position.z <= -7.9;
+          ball.position.z <= -8.0;
 
         if (inGoal) {
           setGoals((p) => p + 1);
@@ -276,7 +345,7 @@ export default function Game() {
           setTimeout(() => {
             resetBall();
             setGameState("ready");
-          }, 1000);
+          }, 900);
         }
         return;
       }
@@ -289,7 +358,7 @@ export default function Game() {
 
   const resetBall = () => {
     if (!sceneRef.current) return;
-    sceneRef.current.ball.position.set(0, 0.22, 5);
+    sceneRef.current.ball.position.set(0, 0.28, -2.2);
   };
 
   const handleGoalScored = () => {
@@ -297,18 +366,13 @@ export default function Game() {
     if (!userData) return;
 
     const voucherCode = generateVoucherCode(userData.email);
-    setVoucherData({
-      won: true,
-      code: voucherCode,
-      time: new Date().toISOString(),
-    });
-
+    setVoucherData({ won: true, code: voucherCode, time: new Date().toISOString() });
     setShowGoalOverlay(true);
 
     setTimeout(() => {
       resetBall();
       setGameState("ready");
-    }, 1500);
+    }, 1200);
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -336,8 +400,6 @@ export default function Game() {
           PENALTY SHOOTOUT
           <div className="h-1 w-24 bg-sd-red mx-auto mt-2 rounded-full" />
         </h1>
-
-        {/* Subtitle */}
         <p className="text-base md:text-lg text-sd-black/70 mt-3 mb-8 font-medium">
           Tap the goal to shoot. <span className="text-sd-red font-bold">Score once to unlock your voucher.</span>
         </p>
@@ -363,23 +425,15 @@ export default function Game() {
       <section className="mb-8 w-full flex flex-col items-center">
         <div className="premium-card p-6 relative overflow-hidden bounce-in mx-auto w-full max-w-[680px]">
           {webglError ? (
-            <div
-              className="bg-white p-8 rounded-lg border-2 border-sd-light-border text-center"
-              data-testid="webgl-error-fallback"
-            >
+            <div className="bg-white p-8 rounded-lg border-2 border-sd-light-border text-center" data-testid="webgl-error-fallback">
               <div className="text-6xl mb-6">⚽</div>
               <h3 className="text-2xl font-heading font-black text-sd-blue mb-4">3D GAME UNAVAILABLE</h3>
               <p className="text-sd-black/70 mb-6 font-medium">{webglError}</p>
               <div className="bg-sd-gray p-6 rounded-lg mb-6">
-                <p className="text-sm text-sd-black/70 font-medium">
-                  Don't worry! You can still win your voucher by registering.
-                </p>
+                <p className="text-sm text-sd-black/70 font-medium">Don't worry! You can still win your voucher by registering.</p>
               </div>
               <Button
-                onClick={() => {
-                  setGoals(1);
-                  handleGoalScored();
-                }}
+                onClick={() => { setGoals(1); handleGoalScored(); }}
                 data-testid="button-claim-voucher"
                 className="premium-button w-full h-14 text-lg"
               >
@@ -400,15 +454,8 @@ export default function Game() {
 
         {/* Controls */}
         <div className="flex justify-center items-center gap-4 mt-6 flex-wrap w-full max-w-[680px]">
-          <Button onClick={resetGame} data-testid="button-reset-game" className="premium-button-secondary px-6 py-3">
-            RESET
-          </Button>
-
-          <Button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            data-testid="button-toggle-sound"
-            className="premium-button-secondary px-6 py-3"
-          >
+          <Button onClick={resetGame} data-testid="button-reset-game" className="premium-button-secondary px-6 py-3">RESET</Button>
+          <Button onClick={() => setSoundEnabled(!soundEnabled)} data-testid="button-toggle-sound" className="premium-button-secondary px-6 py-3">
             {soundEnabled ? "🔊" : "🔇"} SOUND
           </Button>
         </div>
@@ -419,20 +466,13 @@ export default function Game() {
         <div className="fixed inset-0 bg-sd-black/90 flex items-center justify-center z-50 fade-in pointer-events-auto">
           <Card className="max-w-sm mx-4 relative overflow-hidden premium-card bounce-in">
             <CardContent className="pt-8 pb-8 text-center">
-              {/* Confetti */}
               <div className="absolute inset-0 pointer-events-none">
                 {[...Array(30)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="confetti"
-                    style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 3}s` }}
-                  />
+                  <div key={i} className="confetti" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 3}s` }} />
                 ))}
               </div>
-
               <h2 className="text-5xl font-heading font-black text-sd-red mb-6">GOAL!</h2>
               <p className="text-xl font-bold text-sd-black mb-8">You've unlocked your exclusive voucher!</p>
-
               <Button data-testid="button-view-voucher" className="premium-button w-full h-14 text-lg" onClick={goToWin}>
                 VIEW YOUR VOUCHER
               </Button>
