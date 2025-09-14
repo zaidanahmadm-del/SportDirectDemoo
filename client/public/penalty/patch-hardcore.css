@@ -1,0 +1,8 @@
+
+#block_mobile,#block_landscape,#block_portrait,
+#rotate_landscape,#rotate_device,#orientation_msg{
+  display:none !important; visibility:hidden !important;
+  opacity:0 !important; pointer-events:none !important;
+}
+html,body{ margin:0; padding:0; background:#247a3f; }
+#canvas, #canvas_container{ display:block; margin:0 auto; max-width:100%; }
