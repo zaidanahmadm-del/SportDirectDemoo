@@ -257,7 +257,7 @@ function CMain(oData) {
         s_oSoundTrack = playSound("soundtrack",1,true);
         
         
-        this.gotoGame(); // auto-start
+        this.gotoGame(); // start directly
     };
     
     this.gotoMenu = function () {

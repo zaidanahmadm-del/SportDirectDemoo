@@ -12,8 +12,7 @@ function CPreloader() {
     this._init = function () {
         s_oSpriteLibrary.init(this._onImagesLoaded, this._onAllImagesLoaded, this);
         s_oSpriteLibrary.addSprite("progress_bar", "./sprites/progress_bar.png");
-        s_oSpriteLibrary.addSprite("200x200", "./sprites/200x200.jpg");
-
+        
         s_oSpriteLibrary.loadSprites();
 
         _oContainer = new createjs.Container();
@@ -44,20 +43,7 @@ function CPreloader() {
         oBg.graphics.beginFill("black").drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         _oContainer.addChild(oBg);
 
-        var oSprite = s_oSpriteLibrary.getSprite('200x200');
-        _oIcon = createBitmap(oSprite);
-        _oIcon.regX = oSprite.width * 0.5;
-        _oIcon.regY = oSprite.height * 0.5;
-        _oIcon.x = CANVAS_WIDTH/2;
-        _oIcon.y = CANVAS_HEIGHT/2 - 180;
-        _oContainer.addChild(_oIcon);
-
-        _oIconMask = new createjs.Shape();
-        _oIconMask.graphics.beginFill("rgba(0,0,0,0.01)").drawRoundRect(_oIcon.x - 100, _oIcon.y - 100, 200, 200, 10);
-        _oContainer.addChild(_oIconMask);
         
-        _oIcon.mask = _oIconMask;
-
         var oSprite = s_oSpriteLibrary.getSprite('progress_bar');
         _oProgressBar = createBitmap(oSprite);
         _oProgressBar.x = CANVAS_WIDTH/2 - (oSprite.width / 2);

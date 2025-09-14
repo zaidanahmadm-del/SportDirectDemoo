@@ -23,7 +23,8 @@ function CInterface() {
     this._init = function () {
         _pStartPosGuiBox = {x: 0, y: 0};
 
-        var oSprite = s_oSpriteLibrary.getSprite('but_exit');
+        // Removed Exit/Pause/Audio for campaign
+/* var oSprite = s_oSpriteLibrary.getSprite('but_exit');
         _pStartPosExit = {x: CANVAS_WIDTH - (oSprite.height / 2) - 10, y: (oSprite.height / 2) + 10};
         _oButExit = new CGfxButton(_pStartPosExit.x, _pStartPosExit.y, oSprite);
         _oButExit.addEventListener(ON_MOUSE_UP, this._onExit, this);
@@ -56,20 +57,22 @@ function CInterface() {
             _oButFullscreen.addEventListener(ON_MOUSE_UP, this._onFullscreen, this);
         }
 
-        _oScoreBoard = new CScoreBoard(s_oStage);
-        _oLaunchBoard = new CLaunchBoard(s_oStage);
-        _oHelpText = new CHelpText(s_oStage);
+        // _oScoreBoard disabled
+        // _oLaunchBoard disabled
+        // _oHelpText disabled
         _oHelpText.fadeAnim(1, null);
 
+        */
+        // Remove scoreboard, launch board, help text
         this.refreshButtonPos(s_iOffsetX, s_iOffsetY);
     };
 
     this.refreshButtonPos = function (iNewX, iNewY) {
-        _oButExit.setPosition(_pStartPosExit.x - iNewX, iNewY + _pStartPosExit.y);
-        _oButPause.setPosition(_pStartPosPause.x - iNewX, iNewY + _pStartPosPause.y);
+        _oButExit && _oButExit.setPosition(_pStartPosExit.x - iNewX, iNewY + _pStartPosExit.y);
+        _oButPause && _oButPause.setPosition(_pStartPosPause.x - iNewX, iNewY + _pStartPosPause.y);
 
         if (DISABLE_SOUND_MOBILE === false || s_bMobile === false) {
-            _oAudioToggle.setPosition(_pStartPosAudio.x - iNewX, iNewY + _pStartPosAudio.y);
+            _oAudioToggle && _oAudioToggle.setPosition(_pStartPosAudio.x - iNewX, iNewY + _pStartPosAudio.y);
         }
 
         var oPosScoreBoard = _oScoreBoard.getStartPosScore();
@@ -114,9 +117,9 @@ function CInterface() {
 
 
     this.refreshTextScoreBoard = function (iScore, fMultiplier, iScoreNoMult, bEffect) {
-        _oScoreBoard.refreshTextScore(iScore);
+        _oScoreBoard && _oScoreBoard.refreshTextScore(iScore);
         if (bEffect)
-            _oScoreBoard.effectAddScore(iScoreNoMult, fMultiplier);
+            _oScoreBoard && _oScoreBoard.effectAddScore(iScoreNoMult, fMultiplier);
     };
     
     this.resetFullscreenBut = function(){

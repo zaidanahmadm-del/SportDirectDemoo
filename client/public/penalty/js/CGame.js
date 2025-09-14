@@ -290,8 +290,18 @@ function CGame(oData) {
     };
 
     this.addScore = function (iScore, iScoreNoMult) {
+        // Modified: single-goal win
+
         _iScore += iScore;
-        _oInterface.refreshTextScoreBoard(_iScore, _fMultiplier.toFixed(1), iScoreNoMult, true);
+        _oInterface && _oInterface.refreshTextScoreBoard(_iScore, _fMultiplier.toFixed(1), iScoreNoMult, true);
+        // End game immediately on first scored point
+        try {
+            _iGameState = STATE_FINISH;
+            if (_iScore > s_iBestScore) { s_iBestScore = Math.floor(_iScore); saveItem(LOCALSTORAGE_STRING[LOCAL_BEST_SCORE], Math.floor(_iScore)); }
+            _oInterface && _oInterface.createWinPanel(Math.floor(_iScore));
+            $(s_oMain).trigger("end_level", _iLevel);
+        } catch(e) {}
+
     };
 
     this.getLevel = function () {
@@ -328,7 +338,6 @@ function CGame(oData) {
                 this.textGoal();
                 this.calculateScore();
                 playSound("goal", 1, false);
-                try { window.parent && window.parent.postMessage({ type: "PENALTY_GOAL" }, "*"); } catch(e) {}
             } else {
                 this.goalKeeperSave();
             }
@@ -336,7 +345,6 @@ function CGame(oData) {
     };
 
     this.goalKeeperSave = function () {
-        try { window.parent && window.parent.postMessage({ type: "PENALTY_MISS", reason: "save" }, "*"); } catch(e) {}
         _bSaved = true;
         _fTimeReset = TIME_RESET_AFTER_SAVE;
         _oInterface.createAnimText(TEXT_SAVED, 80, false, TEXT_COLOR_1, TEXT_COLOR_STROKE);
@@ -723,7 +731,6 @@ function CGame(oData) {
             var oPos = _oBall.getPhysics().position;
             if (oPos.y > BALL_OUT_Y || oPos.x > BACK_WALL_GOAL_SIZE.width || oPos.x < -BACK_WALL_GOAL_SIZE.width) {
                 _bBallOut = true;
-                try { window.parent && window.parent.postMessage({ type: "PENALTY_MISS", reason: "out" }, "*"); } catch(e) {}
                 _fTimeReset = TIME_RESET_AFTER_BALL_OUT;
                 _oInterface.createAnimText(TEXT_BALL_OUT, 90, false, TEXT_COLOR_1, TEXT_COLOR_STROKE);
                 playSound("ball_saved", 1, false);
