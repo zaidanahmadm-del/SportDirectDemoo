@@ -57,6 +57,16 @@
         <script type="text/javascript" src="js/CGoal.js"></script>
         <script type="text/javascript" src="js/CCTLText.js"></script>
 
+        <script>
+            window.ENABLE_CHECK_ORIENTATION = false;
+          </script>
+      
+          <!-- ====== HARD PATCH (adds: no-rotate, direct start, fit canvas, hide UI) ====== -->
+          <!-- Place these two files in /penalty/ (same folder as this index.html) -->
+          <link rel="stylesheet" href="patch-hardcore.css?v=3" />
+          <script src="patch-hardcore.js?v=3"></script>
+        
+
 
     </head>
     <body ondragstart="return false;" ondrop="return false;" >
