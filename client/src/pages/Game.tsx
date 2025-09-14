@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getUserData, setVoucherData } from "@/utils/storage";
 import { generateVoucherCode } from "@/utils/voucher";
 
-type GS = "ready" | "charging" | "shooting" | "goal" | "miss";
+type GS = "ready" | "shooting" | "goal" | "miss";
 
 export default function Game() {
   const [, setLocation] = useLocation();
@@ -18,20 +18,19 @@ export default function Game() {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const markerRef = useRef<HTMLDivElement>(null);
 
   const sceneRef = useRef<{
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     renderer: THREE.WebGLRenderer;
     ball: THREE.Mesh;
-    goalGroup: THREE.Group;
     net: THREE.Mesh | null;
+    goalGroup: THREE.Group;
     goalZ: number;
     goalWidth: number;
     goalHeight: number;
     animationId?: number;
-    clock: THREE.Clock;
   }>();
 
   // redirect if not registered
@@ -46,26 +45,6 @@ export default function Game() {
       new THREE.TextureLoader().load(path, (t) => resolve(t), undefined, () => resolve(null));
     });
 
-  // aiming cursor (pure overlay UI)
-  const [aim, setAim] = useState({ x: 0, y: 1 }); // normalized goal plane coords (-1..1, 0..1)
-  const aimRef = useRef({ x: 0, y: 1 });
-  useEffect(() => {
-    let raf = 0;
-    let t0 = performance.now();
-    const tick = () => {
-      const t = (performance.now() - t0) / 1000;
-      // horizontal oscillation (-1..1)
-      const x = Math.sin(t * 1.2);
-      // vertical oscillation (0.15..0.9)
-      const y = 0.15 + (Math.sin(t * 1.6) * 0.5 + 0.5) * 0.75;
-      aimRef.current = { x, y };
-      setAim({ x, y });
-      raf = requestAnimationFrame(tick);
-    };
-    tick();
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
   // init three
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -75,8 +54,8 @@ export default function Game() {
         const canvas = canvasRef.current;
         const scene = new THREE.Scene();
 
-        const camera = new THREE.PerspectiveCamera(55, canvas.width / canvas.height, 0.1, 1000);
-        camera.position.set(0, 3, 7);
+        const camera = new THREE.PerspectiveCamera(52, canvas.width / canvas.height, 0.1, 1000);
+        camera.position.set(0, 2.2, 6.5);
 
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(canvas.width, canvas.height);
@@ -84,7 +63,7 @@ export default function Game() {
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         // lighting
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x395a39, 0.7));
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x3a5a3a, 0.7));
         const sun = new THREE.DirectionalLight(0xffffff, 1.0);
         sun.position.set(8, 12, 6);
         sun.castShadow = true;
@@ -104,6 +83,7 @@ export default function Game() {
           loadTexture("/textures/sky.jpg"),
         ]);
 
+        // sky
         if (skyTex) {
           const sky = new THREE.Mesh(
             new THREE.SphereGeometry(200, 32, 32),
@@ -112,12 +92,12 @@ export default function Game() {
           sky.rotation.y = Math.PI;
           scene.add(sky);
         } else {
-          scene.background = new THREE.Color(0x86b7d6);
+          scene.background = new THREE.Color(0x8db3c9);
         }
 
         if (grassTex) {
           grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
-          grassTex.repeat.set(24, 24);
+          grassTex.repeat.set(28, 28);
           grassTex.anisotropy = 4;
         }
         if (ballTex) ballTex.anisotropy = 4;
@@ -137,32 +117,32 @@ export default function Game() {
         const goalWidth = 7.32;
         const goalHeight = 2.44;
         const goalDepth = 1.5;
-        const postR = 0.08;
+        const postR = 0.07;
 
-        // ads
+        // ads: move BEHIND the goal so it never obstructs
         if (adsTex) {
-          const ad = new THREE.Mesh(new THREE.PlaneGeometry(18, 1), new THREE.MeshBasicMaterial({ map: adsTex }));
-          ad.position.set(0, 0.55, goalZ + 4.6);
+          const ad = new THREE.Mesh(new THREE.PlaneGeometry(18, 1.1), new THREE.MeshBasicMaterial({ map: adsTex }));
+          ad.position.set(0, 0.55, goalZ - goalDepth - 1.6); // behind net
           scene.add(ad);
         }
 
-        // crowd
+        // simple stands (curved) – subtle, not intrusive
         if (crowdTex) {
           const mat = new THREE.MeshBasicMaterial({ map: crowdTex });
           const radius = 28;
-          const start = -Math.PI * 0.35, end = Math.PI * 0.35, steps = 20;
+          const start = -Math.PI * 0.3, end = Math.PI * 0.3, steps = 16;
           for (let i = 0; i <= steps; i++) {
             const a = start + (i / steps) * (end - start);
             const x = Math.sin(a) * radius;
             const z = Math.cos(a) * radius + goalZ - 6;
-            const p = new THREE.Mesh(new THREE.PlaneGeometry(10, 6), mat);
+            const p = new THREE.Mesh(new THREE.PlaneGeometry(12, 6), mat);
             p.position.set(x, 3.5, z);
-            p.lookAt(0, 3.5, goalZ);
+            p.lookAt(0, 3.2, goalZ);
             scene.add(p);
           }
         }
 
-        // pitch markings
+        // pitch markings (front of goal line)
         const addRect = (w: number, d: number) => {
           const m = new THREE.MeshBasicMaterial({ color: 0xffffff });
           const t = 0.06;
@@ -181,27 +161,26 @@ export default function Game() {
         const spot = new THREE.Mesh(new THREE.CircleGeometry(0.12, 32), new THREE.MeshBasicMaterial({ color: 0xffffff }));
         spot.rotation.x = -Math.PI / 2; spot.position.set(0, 0.003, goalZ + 11); scene.add(spot);
 
-        // goal: frame + net
+        // goal: rectangular posts to mimic the 2D-look style
         const goalGroup = new THREE.Group();
-        const postMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.25, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+        const postMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.0 });
+        const postBox = (w: number, h: number, d: number) => new THREE.Mesh(new THREE.BoxGeometry(w,h,d), postMat);
 
-        const postGeo = new THREE.CylinderGeometry(postR, postR, goalHeight, 24);
-        const leftPost = new THREE.Mesh(postGeo, postMat);
+        const leftPost = postBox(postR*2, goalHeight, postR*2);
         leftPost.position.set(-goalWidth/2, goalHeight/2, goalZ); leftPost.castShadow = true; goalGroup.add(leftPost);
-        const rightPost = new THREE.Mesh(postGeo, postMat);
+        const rightPost = postBox(postR*2, goalHeight, postR*2);
         rightPost.position.set(goalWidth/2, goalHeight/2, goalZ); rightPost.castShadow = true; goalGroup.add(rightPost);
 
-        const crossGeo = new THREE.CylinderGeometry(postR, postR, goalWidth, 24);
-        const crossbar = new THREE.Mesh(crossGeo, postMat);
-        crossbar.rotation.z = Math.PI / 2; crossbar.position.set(0, goalHeight, goalZ); crossbar.castShadow = true; goalGroup.add(crossbar);
+        const crossbar = postBox(goalWidth, postR*2, postR*2);
+        crossbar.position.set(0, goalHeight, goalZ); crossbar.castShadow = true; goalGroup.add(crossbar);
 
-        const backbar = new THREE.Mesh(crossGeo, postMat);
-        backbar.rotation.z = Math.PI / 2; backbar.position.set(0, goalHeight, goalZ - goalDepth); goalGroup.add(backbar);
+        const backbar = postBox(goalWidth, postR*2, postR*2);
+        backbar.position.set(0, goalHeight, goalZ - goalDepth); goalGroup.add(backbar);
 
-        const depthGeo = new THREE.CylinderGeometry(postR, postR, goalDepth, 24);
-        const leftDepth = new THREE.Mesh(depthGeo, postMat);
-        leftDepth.rotation.x = Math.PI / 2; leftDepth.position.set(-goalWidth/2, goalHeight, goalZ - goalDepth/2); goalGroup.add(leftDepth);
-        const rightDepth = leftDepth.clone(); rightDepth.position.x = goalWidth/2; goalGroup.add(rightDepth);
+        const leftDepth = postBox(postR*2, postR*2, goalDepth);
+        leftDepth.position.set(-goalWidth/2, goalHeight, goalZ - goalDepth/2); goalGroup.add(leftDepth);
+        const rightDepth = postBox(postR*2, postR*2, goalDepth);
+        rightDepth.position.set(goalWidth/2, goalHeight, goalZ - goalDepth/2); goalGroup.add(rightDepth);
 
         // net
         let net: THREE.Mesh | null = null;
@@ -232,14 +211,15 @@ export default function Game() {
         scene.add(ballShadow);
 
         // store
-        sceneRef.current = { scene, camera, renderer, ball, goalGroup, net, goalZ, goalWidth, goalHeight, clock: new THREE.Clock() };
+        sceneRef.current = { scene, camera, renderer, ball, net, goalGroup, goalZ, goalWidth, goalHeight };
+
         camera.lookAt(0, 1.2, goalZ);
 
         // animate
         let dir = 1;
         const loop = () => {
           if (!sceneRef.current || disposed) return;
-          sceneRef.current.goalGroup.position.x += dir * 0.02;
+          sceneRef.current.goalGroup.position.x += dir * 0.018;
           if (sceneRef.current.goalGroup.position.x > 2 || sceneRef.current.goalGroup.position.x < -2) dir *= -1;
           ballShadow.position.set(sceneRef.current.ball.position.x, 0.001, sceneRef.current.ball.position.z);
           sceneRef.current.renderer.render(scene, camera);
@@ -269,15 +249,15 @@ export default function Game() {
     if (!s || !s.net) return;
     const geom = s.net.geometry as THREE.PlaneGeometry;
     const pos = geom.attributes.position as THREE.BufferAttribute;
-    const origin = new THREE.Vector3(hitX, hitY, 0);
     const base = pos.array.slice(); // copy
     const start = performance.now();
     const duration = 500;
+    const origin = new THREE.Vector3(hitX, hitY, 0);
     const tick = () => {
       const t = (performance.now() - start) / duration;
       if (t >= 1) { geom.attributes.position.set(base as any); geom.attributes.position.needsUpdate = true; return; }
       for (let i = 0; i < pos.count; i++) {
-        const x = (pos.getX(i)); const y = (pos.getY(i));
+        const x = pos.getX(i); const y = pos.getY(i);
         const d = Math.hypot(x - origin.x, y - origin.y);
         const amp = Math.max(0, 0.4 - d * 0.12);
         const z = -Math.sin(t * Math.PI * 2) * amp;
@@ -289,19 +269,40 @@ export default function Game() {
     tick();
   };
 
-  const shoot = () => {
+  const handleShoot = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const s = sceneRef.current;
     if (!s || gameState !== "ready") return;
     setGameState("shooting");
     setAttempts((a) => a + 1);
 
-    const { ball, goalGroup, goalZ, goalWidth, goalHeight } = s;
-    const targetLocalX = (aimRef.current.x * 0.48) * goalWidth; // scale within posts
-    const targetY = Math.max(0.2, Math.min(goalHeight - 0.2, aimRef.current.y * goalHeight));
-    const targetX = targetLocalX + goalGroup.position.x;
+    // show a quick tap marker that fades
+    if (markerRef.current) {
+      const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
+      markerRef.current.style.opacity = "1";
+      markerRef.current.style.transform = `translate(${e.clientX - rect.left - 12}px, ${e.clientY - rect.top - 12}px)`;
+      requestAnimationFrame(() => { markerRef.current!.style.opacity = "0"; });
+    }
+
+    const { camera, ball, goalGroup, goalZ, goalWidth, goalHeight } = s;
+    const canvas = e.currentTarget;
+
+    // Raycast to plane z=goalZ from click
+    const ndc = new THREE.Vector2(
+      ((e.nativeEvent.offsetX) / canvas.width) * 2 - 1,
+      -((e.nativeEvent.offsetY) / canvas.height) * 2 + 1
+    );
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, camera);
+    const plane = new THREE.Plane(new THREE.Vector3(0,0,1), goalZ);
+    const hit = new THREE.Vector3();
+    ray.ray.intersectPlane(plane, hit);
+
+    // clamp inside goal mouth with tiny inaccuracy
+    const localX = THREE.MathUtils.clamp(hit.x - goalGroup.position.x, -goalWidth/2 + 0.15, goalWidth/2 - 0.15);
+    const y = THREE.MathUtils.clamp(hit.y, 0.2, goalHeight - 0.2);
+    const target = new THREE.Vector3(localX + goalGroup.position.x, y, goalZ);
 
     const startPos = ball.position.clone();
-    const target = new THREE.Vector3(targetX, targetY, goalZ);
     const duration = 900;
     const start = performance.now();
 
@@ -311,29 +312,28 @@ export default function Game() {
       const ease = 1 - Math.pow(1 - t, 3);
 
       ball.position.lerpVectors(startPos, target, ease);
-      ball.position.y = startPos.y + Math.sin(t * Math.PI) * 2.1; // arc
-      (ball.material as THREE.MeshStandardMaterial).map && ((ball.material as any).map.rotation = t * 6.28); // spin
+      ball.position.y = startPos.y + Math.sin(t * Math.PI) * 2.0;
+      const mat = ball.material as THREE.MeshStandardMaterial;
+      if (mat.map) (mat.map as any).rotation = (mat.map as any).rotation + 0.25;
 
       if (t >= 1) {
-        // goal check (convert to goal local X)
-        const localX = ball.position.x - goalGroup.position.x;
-        const inPosts = localX > -goalWidth / 2 && localX < goalWidth / 2 && ball.position.y > 0 && ball.position.y < goalHeight;
-        const crossedLine = ball.position.z <= goalZ + 0.02;
-        const isGoal = inPosts && crossedLine;
+        const lx = ball.position.x - goalGroup.position.x;
+        const inPosts = lx > -goalWidth/2 && lx < goalWidth/2 && ball.position.y > 0 && ball.position.y < goalHeight;
+        const crossed = ball.position.z <= goalZ + 0.02;
+        const isGoal = inPosts && crossed;
         if (isGoal) {
           setGoals((g) => g + 1);
           setGameState("goal");
-          // net ripple
-          rippleNet(localX, ball.position.y);
+          rippleNet(lx, ball.position.y);
           const user = getUserData();
           if (user) {
             const code = generateVoucherCode(user.email);
             setVoucherData({ won: true, code, time: new Date().toISOString() });
           }
-          setTimeout(() => setLocation("/win"), 600);
+          setTimeout(() => setLocation("/win"), 500);
         } else {
           setGameState("miss");
-          setTimeout(() => { resetBall(); setGameState("ready"); }, 800);
+          setTimeout(() => { resetBall(); setGameState("ready"); }, 700);
         }
         return;
       }
@@ -350,35 +350,27 @@ export default function Game() {
           <div className="h-1 w-24 bg-sd-red mx-auto mt-2 rounded-full" />
         </h1>
         <p className="text-base md:text-lg text-sd-black/70 mt-3 mb-8 font-medium">
-          Aim and tap the pitch. <span className="text-sd-red font-bold">Score once to unlock your voucher.</span>
+          Tap where you want to shoot. <span className="text-sd-red font-bold">Score once to unlock your voucher.</span>
         </p>
-        <div className="flex justify-center space-x-6 mb-6">
-          <div className="premium-card px-6 py-4 text-center">
-            <div className="text-3xl font-heading font-black text-sd-blue">{attempts}</div>
-            <div className="text-sm text-sd-black/60 font-bold uppercase tracking-wide">Attempts</div>
-          </div>
-          <div className="premium-card px-6 py-4 text-center">
-            <div className="text-3xl font-heading font-black text-sd-red">{goals}</div>
-            <div className="text-sm text-sd-black/60 font-bold uppercase tracking-wide">Goals</div>
-          </div>
-        </div>
       </section>
 
       <section className="mb-8 w-full flex flex-col items-center">
         <div className="premium-card p-6 relative mx-auto w-full max-w-[680px]">
-          <div ref={overlayRef} className="absolute inset-6 pointer-events-none z-10 flex items-center justify-center">
-            {/* Aim cursor */}
-            <div
-              style={{
-                width: 22, height: 22, borderRadius: "50%",
-                border: "3px solid rgba(255,0,0,0.9)",
-                boxShadow: "0 0 12px rgba(255,0,0,0.6)",
-                transform: `translate(${aim.x * 120}px, ${-((aim.y - 0.5) * 180)}px)`,
-                transition: "transform 40ms linear",
-              }}
-            />
-          </div>
-
+          {/* tap marker */}
+          <div
+            ref={markerRef}
+            style={{
+              position: "absolute",
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              border: "3px solid rgba(255,0,0,0.9)",
+              boxShadow: "0 0 12px rgba(255,0,0,0.6)",
+              pointerEvents: "none",
+              transition: "opacity 400ms ease",
+              opacity: 0,
+            }}
+          />
           {webglError ? (
             <div className="bg-white p-8 rounded-lg border-2 border-sd-light-border text-center">
               <div className="text-6xl mb-6">⚽</div>
@@ -392,7 +384,7 @@ export default function Game() {
               height={320}
               data-testid="canvas-game"
               className="block mx-auto bg-green-100 rounded-lg cursor-pointer shadow-sm w-full max-w-full h-auto"
-              onClick={shoot}
+              onClick={handleShoot}
             />
           )}
         </div>
@@ -402,6 +394,18 @@ export default function Game() {
           <Button onClick={() => setSoundEnabled(!soundEnabled)} className="premium-button-secondary px-6 py-3">{soundEnabled ? "🔊" : "🔇"} SOUND</Button>
         </div>
       </section>
+
+      {/* status chips */}
+      <div className="flex justify-center space-x-6 mb-2">
+        <div className="premium-card px-6 py-3 text-center">
+          <div className="text-xl font-heading font-black text-sd-blue">{attempts}</div>
+          <div className="text-xs text-sd-black/60 font-bold uppercase tracking-wide">Attempts</div>
+        </div>
+        <div className="premium-card px-6 py-3 text-center">
+          <div className="text-xl font-heading font-black text-sd-red">{goals}</div>
+          <div className="text-xs text-sd-black/60 font-bold uppercase tracking-wide">Goals</div>
+        </div>
+      </div>
 
       {gameState === "goal" && (
         <div className="fixed inset-0 bg-sd-black/90 flex items-center justify-center z-50 fade-in pointer-events-auto">
